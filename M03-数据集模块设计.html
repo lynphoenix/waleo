@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M03-数据集模块设计.md</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        h3 { font-size: 1.25em; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        table th {
+            background: #f4f4f4;
+            font-weight: 600;
+        }
+        blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 16px;
+            color: #666;
+            margin: 20px 0;
+        }
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+<h1 id="m03-waleo-dataset">M03: 数据集模块 (waleo-dataset) 设计文档</h1>
+<blockquote>
+<p><strong>优先级</strong>: P0 (核心基础)
+<strong>依赖</strong>: M01 (waleo-utils), M02 (waleo-config)
+<strong>状态</strong>: 设计中</p>
+</blockquote>
+<hr />
+<h2 id="1">1. 模块概述</h2>
+<p><strong>模块名称</strong>: <code>waleo-dataset</code>
+<strong>版本</strong>: v0.1.0
+<strong>描述</strong>: 提供机器人学习数据集的加载、预处理、采样和统计功能，支持视频和图像存储格式。</p>
+<hr />
+<h2 id="2">2. 模块职责</h2>
+<h3 id="21">2.1 核心职责</h3>
+<ul>
+<li>数据集加载（从本地或 HuggingFace Hub）</li>
+<li>视频/图像解码和编码</li>
+<li>Episode 级别的数据采样</li>
+<li>数据统计计算</li>
+<li>数据变换和预处理</li>
+<li>多数据集联合加载</li>
+</ul>
+<h3 id="22">2.2 非职责</h3>
+<ul>
+<li>不涉及模型训练逻辑（属于 M13 训练模块）</li>
+<li>不涉及数据记录（属于独立的数据收集工具）</li>
+<li>不涉及环境交互（属于 M11 环境模块）</li>
+</ul>
+<hr />
+<h2 id="3">3. 子模块结构</h2>
+<pre class="codehilite"><code>waleo-dataset/
+├── lerobot_dataset/
+│   ├── __init__.py
+│   ├── core/            # 核心数据集类
+│   │   ├── __init__.py
+│   │   ├── dataset.py   # LeRobotDataset 主类
+│   │   ├── metadata.py  # LeRobotDatasetMetadata 元数据类
+│   │   └── buffer.py    # EpisodeBuffer 在线数据收集
+│   ├── video/           # 视频处理
+│   │   ├── __init__.py
+│   │   ├── decoder.py   # 视频解码
+│   │   ├── encoder.py   # 视频编码
+│   │   └── backend.py   # 后端选择
+│   ├── sampling/        # 数据采样
+│   │   ├── __init__.py
+│   │   ├── sampler.py   # EpisodeAwareSampler
+│   │   └── batch.py     # BatchSampler
+│   ├── transforms/      # 数据变换
+│   │   ├── __init__.py
+│   │   ├── image.py     # 图像变换
+│   │   └── normalization.py  # 归一化
+│   ├── stats/           # 统计计算
+│   │   ├── __init__.py
+│   │   ├── compute.py   # 统计计算
+│   │   └── aggregate.py # 统计聚合
+│   ├── utils/           # 工具函数
+│   │   ├── __init__.py
+│   │   ├── io.py        # 文件I/O
+│   │   └── validate.py  # 数据验证
+│   └── factory.py       # 数据集工厂
+├── tests/
+│   ├── test_dataset.py
+│   ├── test_video.py
+│   ├── test_sampling.py
+│   ├── test_transforms.py
+│   └── test_stats.py
+├── pyproject.toml
+└── README.md
+</code></pre>
+
+<hr />
+<h2 id="4-api">4. API 设计</h2>
+<h3 id="41-coredatasetpy">4.1 核心数据集类 (<code>core/dataset.py</code>)</h3>
+<h4 id="lerobotdataset">LeRobotDataset 类</h4>
+<pre class="codehilite"><code class="language-python">class LeRobotDataset(torch.utils.data.Dataset):
+    &quot;&quot;&quot;LeRobot 机器人学习数据集
+
+    支持：
+    - 从 HuggingFace Hub 加载
+    - 本地文件加载
+    - 视频/图像存储
+    - 时间戳索引
+    - Episode 边界感知
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        repo_id: str,
+        root: str | Path | None = None,
+        episodes: list[int] | None = None,
+        image_transforms: Any | None = None,
+        revision: str | None = None,
+        video_backend: str = &quot;pyav&quot;,
+        delta_timestamps: dict | None = None,
+        skip_validation: bool = False,
+    ):
+        &quot;&quot;&quot;
+        Args:
+            repo_id: HuggingFace Hub 仓库 ID (如 &quot;waleo/pusht&quot;)
+            root: 本地存储路径，默认为 HF_LEROBOT_HOME/repo_id
+            episodes: 要使用的 episode 索引列表，None 表示全部
+            image_transforms: 图像变换配置
+            revision: Hub 版本
+            video_backend: 视频解码后端 (&quot;pyav&quot;, &quot;torchcodec&quot;)
+            delta_timestamps: 时间戳偏移配置
+            skip_validation: 跳过数据验证
+        &quot;&quot;&quot;
+        ...
+
+    def __len__(self) -&gt; int:
+        &quot;&quot;&quot;返回数据集总帧数&quot;&quot;&quot;
+        ...
+
+    def __getitem__(self, idx: int) -&gt; dict:
+        &quot;&quot;&quot;获取单帧数据
+
+        Returns:
+            包含以下键的字典：
+            - observation.state: 机器人状态
+            - observation.image: 相机图像 (如果存在)
+            - action: 动作
+            - task: 任务描述 (如果存在)
+            - episode_index: episode 索引
+            - frame_index: 帧索引
+            - timestamp: 时间戳
+        &quot;&quot;&quot;
+        ...
+
+    @property
+    def num_episodes(self) -&gt; int:
+        &quot;&quot;&quot;Episode 总数&quot;&quot;&quot;
+        ...
+
+    @property
+    def fps(self) -&gt; int:
+        &quot;&quot;&quot;数据采集帧率&quot;&quot;&quot;
+        ...
+
+    @property
+    def shape(self) -&gt; dict:
+        &quot;&quot;&quot;各特征的形状&quot;&quot;&quot;
+        ...
+
+    def get_episode_data(self, episode_index: int) -&gt; dict:
+        &quot;&quot;&quot;获取整个 episode 的数据&quot;&quot;&quot;
+        ...
+
+    def get_stats(self) -&gt; dict:
+        &quot;&quot;&quot;获取数据集统计信息&quot;&quot;&quot;
+        ...
+
+    def save_to_disk(self, path: str | Path) -&gt; None:
+        &quot;&quot;&quot;保存数据集到磁盘&quot;&quot;&quot;
+        ...
+</code></pre>
+
+<h4 id="_1">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from lerobot_dataset import LeRobotDataset, load_dataset
+
+# 从 Hub 加载
+dataset = LeRobotDataset(
+    repo_id=&quot;waleo/pusht&quot;,
+    episodes=[0, 1, 2],  # 只使用前 3 个 episodes
+    video_backend=&quot;pyav&quot;
+)
+
+# 访问数据
+print(f&quot;Total frames: {len(dataset)}&quot;)
+print(f&quot;Episodes: {dataset.num_episodes}&quot;)
+print(f&quot;FPS: {dataset.fps}&quot;)
+
+# 获取单帧
+frame = dataset[0]
+print(frame.keys())
+# dict_keys(['observation.state', 'observation.image', 'action', ...])
+
+# 获取统计信息
+stats = dataset.get_stats()
+print(stats['observation.state']['mean'])
+</code></pre>
+
+<h4 id="_2">依赖</h4>
+<ul>
+<li><code>torch</code> (PyTorch Dataset)</li>
+<li><code>datasets</code> (HuggingFace Datasets)</li>
+<li><code>huggingface_hub</code> (Hub 下载)</li>
+<li><code>numpy</code> (数组操作)</li>
+<li><code>lerobot-utils</code> (M01)</li>
+<li><code>lerobot-config</code> (M02)</li>
+</ul>
+<hr />
+<h3 id="42-coremetadatapy">4.2 元数据类 (<code>core/metadata.py</code>)</h3>
+<h4 id="lerobotdatasetmetadata">LeRobotDatasetMetadata 类</h4>
+<pre class="codehilite"><code class="language-python">class LeRobotDatasetMetadata:
+    &quot;&quot;&quot;LeRobot 数据集元数据（不加载数据）
+
+    用于快速查看数据集信息而不加载实际数据。
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        repo_id: str,
+        root: str | Path | None = None,
+        revision: str | None = None,
+    ):
+        &quot;&quot;&quot;
+        Args:
+            repo_id: HuggingFace Hub 仓库 ID
+            root: 本地路径
+            revision: Hub 版本
+        &quot;&quot;&quot;
+        ...
+
+    @property
+    def info(self) -&gt; dict:
+        &quot;&quot;&quot;数据集 info.json 内容&quot;&quot;&quot;
+        ...
+
+    @property
+    def episodes(self) -&gt; list[dict]:
+        &quot;&quot;&quot;Episode 元数据列表&quot;&quot;&quot;
+        ...
+
+    @property
+    def stats(self) -&gt; dict:
+        &quot;&quot;&quot;数据集统计信息&quot;&quot;&quot;
+        ...
+
+    @property
+    def shapes(self) -&gt; dict:
+        &quot;&quot;&quot;特征形状&quot;&quot;&quot;
+        ...
+
+    @property
+    def total_frames(self) -&gt; int:
+        &quot;&quot;&quot;总帧数&quot;&quot;&quot;
+        ...
+
+    @property
+    def total_episodes(self) -&gt; int:
+        &quot;&quot;&quot;总 episode 数&quot;&quot;&quot;
+        ...
+
+    def reload(self) -&gt; None:
+        &quot;&quot;&quot;重新加载元数据&quot;&quot;&quot;
+        ...
+</code></pre>
+
+<h4 id="_3">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from lerobot_dataset import LeRobotDatasetMetadata
+
+# 快速查看数据集信息
+meta = LeRobotDatasetMetadata(&quot;waleo/pusht&quot;)
+print(f&quot;Episodes: {meta.total_episodes}&quot;)
+print(f&quot;Frames: {meta.total_frames}&quot;)
+print(f&quot;Shapes: {meta.shapes}&quot;)
+print(f&quot;FPS: {meta.info['fps']}&quot;)
+</code></pre>
+
+<h4 id="_4">依赖</h4>
+<ul>
+<li><code>huggingface_hub</code></li>
+<li><code>lerobot-utils</code> (M01)</li>
+</ul>
+<hr />
+<h3 id="43-video">4.3 视频处理 (<code>video/</code>)</h3>
+<h4 id="431-videodecoderpy">4.3.1 视频解码 (<code>video/decoder.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>decode_video_frames(path, timestamps, tolerance, backend)</code></td>
+<td><code>Path, list[float], float, str</code></td>
+<td><code>torch.Tensor</code></td>
+<td>解码视频帧</td>
+</tr>
+<tr>
+<td><code>get_video_info(path)</code></td>
+<td><code>Path</code></td>
+<td><code>dict</code></td>
+<td>获取视频信息（帧率、分辨率等）</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_5">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from lerobot_dataset.video import decode_video_frames, get_video_info
+
+# 获取视频信息
+info = get_video_info(&quot;episode_0.mp4&quot;)
+print(info)
+# {'fps': 30, 'width': 640, 'height': 480, 'n_frames': 1500}
+
+# 解码指定时间戳的帧
+timestamps = [0.0, 0.5, 1.0, 1.5, 2.0]  # 秒
+frames = decode_video_frames(
+    &quot;episode_0.mp4&quot;,
+    timestamps=timestamps,
+    tolerance_s=0.01,  # 10ms 容差
+    backend=&quot;pyav&quot;
+)
+# frames: (5, 3, 480, 640) tensor
+</code></pre>
+
+<h4 id="432-videoencoderpy">4.3.2 视频编码 (<code>video/encoder.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>encode_video_frames(frames, path, fps, codec)</code></td>
+<td><code>ndarray, Path, int, str</code></td>
+<td>无</td>
+<td>编码图像序列为视频</td>
+</tr>
+<tr>
+<td><code>encode_video_async(frames, path, fps, codec)</code></td>
+<td><code>ndarray, Path, int, str</code></td>
+<td><code>Future</code></td>
+<td>异步编码</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_6">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from lerobot_dataset.video import encode_video_frames
+import numpy as np
+
+# frames: (T, H, W, C) numpy array
+frames = np.random.rand(100, 480, 640, 3) * 255
+frames = frames.astype(np.uint8)
+
+encode_video_frames(
+    frames,
+    &quot;output.mp4&quot;,
+    fps=30,
+    codec=&quot;h264&quot;
+)
+</code></pre>
+
+<h4 id="_7">依赖</h4>
+<ul>
+<li><code>torchvision</code> (视频解码)</li>
+<li><code>imageio</code> 或 <code>av</code> (视频编码)</li>
+<li><code>numpy</code></li>
+</ul>
+<hr />
+<h3 id="44-sampling">4.4 数据采样 (<code>sampling/</code>)</h3>
+<h4 id="441-episodeawaresampler">4.4.1 EpisodeAwareSampler</h4>
+<pre class="codehilite"><code class="language-python">class EpisodeAwareSampler(torch.utils.data.Sampler):
+    &quot;&quot;&quot;Episode 边界感知采样器
+
+    特点：
+    - 尊重 episode 边界
+    - 支持丢弃首尾帧
+    - 支持 episode 过滤
+    - 支持随机打乱
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        episode_data_index: dict,
+        episode_indices: list[int] | None = None,
+        drop_n_first_frames: int = 0,
+        drop_n_last_frames: int = 0,
+        shuffle: bool = False,
+    ):
+        &quot;&quot;&quot;
+        Args:
+            episode_data_index: episode 索引映射
+                {&quot;from&quot;: tensor([0, 100, 200]), &quot;to&quot;: tensor([100, 200, 300])}
+            episode_indices: 要使用的 episode 索引
+            drop_n_first_frames: 每个 episode 开头丢弃的帧数
+            drop_n_last_frames: 每个 episode 结尾丢弃的帧数
+            shuffle: 是否打乱顺序
+        &quot;&quot;&quot;
+        ...
+
+    def __iter__(self) -&gt; Iterator[int]:
+        &quot;&quot;&quot;生成索引&quot;&quot;&quot;
+        ...
+
+    def __len__(self) -&gt; int:
+        &quot;&quot;&quot;总采样数&quot;&quot;&quot;
+        ...
+</code></pre>
+
+<h4 id="_8">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from lerobot_dataset import LeRobotDataset
+from lerobot_dataset.sampling import EpisodeAwareSampler
+from torch.utils.data import DataLoader
+
+dataset = LeRobotDataset(&quot;waleo/pusht&quot;)
+
+# 创建采样器：只使用前 10 个 episodes，每个 episode 丢弃首尾各 5 帧
+sampler = EpisodeAwareSampler(
+    episode_data_index=dataset.episode_data_index,
+    episode_indices=list(range(10)),
+    drop_n_first_frames=5,
+    drop_n_last_frames=5,
+    shuffle=True
+)
+
+dataloader = DataLoader(
+    dataset,
+    batch_size=32,
+    sampler=sampler,
+    num_workers=4
+)
+</code></pre>
+
+<h4 id="_9">依赖</h4>
+<ul>
+<li><code>torch</code></li>
+</ul>
+<hr />
+<h3 id="45-transforms">4.5 数据变换 (<code>transforms/</code>)</h3>
+<h4 id="451">4.5.1 图像变换</h4>
+<pre class="codehilite"><code class="language-python">class ImageTransforms:
+    &quot;&quot;&quot;图像变换组合&quot;&quot;&quot;
+
+    def __init__(
+        self,
+        enable: bool = True,
+        random_resize: bool = False,
+        random_crop: bool = False,
+        horizontal_flip: bool = False,
+        vertical_flip: bool = False,
+        resize_size: tuple[int, int] | None = None,
+    ):
+        ...
+
+    def __call__(self, image: np.ndarray) -&gt; np.ndarray:
+        &quot;&quot;&quot;应用变换&quot;&quot;&quot;
+        ...
+</code></pre>
+
+<h4 id="452">4.5.2 归一化</h4>
+<pre class="codehilite"><code class="language-python">def normalize_observation(
+    obs: dict,
+    stats: dict,
+    normalization_mode: str = &quot;MEAN_STD&quot;
+) -&gt; dict:
+    &quot;&quot;&quot;归一化观察数据
+
+    Args:
+        obs: 观察数据字典
+        stats: 统计信息字典
+        normalization_mode: &quot;MIN_MAX&quot;, &quot;MEAN_STD&quot;, 或 &quot;IDENTITY&quot;
+
+    Returns:
+        归一化后的观察数据
+    &quot;&quot;&quot;
+    ...
+
+def unnormalize_action(
+    action: np.ndarray | torch.Tensor,
+    stats: dict,
+    normalization_mode: str = &quot;MIN_MAX&quot;
+) -&gt; np.ndarray | torch.Tensor:
+    &quot;&quot;&quot;反归一化动作数据&quot;&quot;&quot;
+    ...
+</code></pre>
+
+<h4 id="_10">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from lerobot_dataset.transforms import normalize_observation, ImageTransforms
+
+# 归一化
+stats = dataset.get_stats()
+obs_normalized = normalize_observation(obs, stats, &quot;MEAN_STD&quot;)
+
+# 图像变换
+transforms = ImageTransforms(
+    random_crop=True,
+    horizontal_flip=True,
+    resize_size=(224, 224)
+)
+image_transformed = transforms(image)
+</code></pre>
+
+<h4 id="_11">依赖</h4>
+<ul>
+<li><code>numpy</code></li>
+<li><code>torch</code></li>
+<li><code>torchvision</code> (可选)</li>
+</ul>
+<hr />
+<h3 id="46-stats">4.6 统计计算 (<code>stats/</code>)</h3>
+<h4 id="_12">函数列表</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compute_episode_stats(dataset, episode_index)</code></td>
+<td><code>Dataset, int</code></td>
+<td><code>dict</code></td>
+<td>计算单个 episode 统计</td>
+</tr>
+<tr>
+<td><code>aggregate_stats(episodes_stats)</code></td>
+<td><code>list[dict]</code></td>
+<td><code>dict</code></td>
+<td>聚合多个 episodes 统计</td>
+</tr>
+<tr>
+<td><code>compute_dataset_stats(dataset)</code></td>
+<td><code>Dataset</code></td>
+<td><code>dict</code></td>
+<td>计算整个数据集统计</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_13">统计信息格式</h4>
+<pre class="codehilite"><code class="language-python">{
+    &quot;observation.state&quot;: {
+        &quot;mean&quot;: np.array([...]),
+        &quot;std&quot;: np.array([...]),
+        &quot;min&quot;: np.array([...]),
+        &quot;max&quot;: np.array([...]),
+        &quot;q01&quot;: np.array([...]),  # 1% 分位数
+        &quot;q99&quot;: np.array([...]),  # 99% 分位数
+    },
+    &quot;action&quot;: {
+        &quot;mean&quot;: np.array([...]),
+        &quot;std&quot;: np.array([...]),
+        &quot;min&quot;: np.array([...]),
+        &quot;max&quot;: np.array([...]),
+        ...
+    },
+    &quot;observation.image&quot;: {
+        &quot;mean&quot;: np.array([...]),  # 每通道均值
+        &quot;std&quot;: np.array([...]),
+        ...
+    }
+}
+</code></pre>
+
+<h4 id="_14">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from lerobot_dataset.stats import compute_dataset_stats
+
+stats = compute_dataset_stats(dataset)
+
+# 保存统计信息
+import json
+with open(&quot;stats.json&quot;, &quot;w&quot;) as f:
+    json.dump(stats, f)
+
+# 用于归一化
+from lerobot_dataset.transforms import normalize_observation
+obs_normalized = normalize_observation(obs, stats)
+</code></pre>
+
+<h4 id="_15">依赖</h4>
+<ul>
+<li><code>numpy</code></li>
+<li><code>torch</code></li>
+</ul>
+<hr />
+<h3 id="47-factorypy">4.7 数据集工厂 (<code>factory.py</code>)</h3>
+<h4 id="_16">函数列表</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>load_dataset(repo_id, **kwargs)</code></td>
+<td><code>str, ...</code></td>
+<td><code>LeRobotDataset</code></td>
+<td>加载单个数据集</td>
+</tr>
+<tr>
+<td><code>load_multiple_datasets(repo_ids, **kwargs)</code></td>
+<td><code>list[str], ...</code></td>
+<td><code>ConcatDataset</code></td>
+<td>加载并合并多个数据集</td>
+</tr>
+<tr>
+<td><code>create_dataset_from_data(data, info)</code></td>
+<td><code>dict, dict</code></td>
+<td><code>LeRobotDataset</code></td>
+<td>从原始数据创建数据集</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_17">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from lerobot_dataset import load_dataset, load_multiple_datasets
+
+# 加载单个数据集
+dataset = load_dataset(&quot;waleo/pusht&quot;, episodes=[0, 1, 2])
+
+# 加载多个数据集并合并
+dataset = load_multiple_datasets(
+    repo_ids=[&quot;waleo/pusht&quot;, &quot;waleo/aloha&quot;],
+    # 所有数据集共享的参数
+    video_backend=&quot;pyav&quot;,
+)
+
+# 用于不同任务的数据混合
+dataset = load_multiple_datasets(
+    repo_ids=[&quot;lerobot/task_a&quot;, &quot;lerobot/task_b&quot;, &quot;lerobot/task_c&quot;],
+    episodes=[0, 1, 2],  # 每个数据集使用相同的 episodes
+)
+</code></pre>
+
+<h4 id="_18">依赖</h4>
+<ul>
+<li><code>torch.utils.data</code></li>
+<li><code>lerobot_dataset.core</code></li>
+</ul>
+<hr />
+<h2 id="5">5. 数据格式规范</h2>
+<h3 id="51">5.1 目录结构</h3>
+<pre class="codehilite"><code>dataset/
+├── meta/
+│   ├── info.json           # 数据集信息
+│   ├── episodes.jsonl      # Episode 元数据
+│   ├── stats.json          # 统计信息
+│   └── tasks.jsonl         # 任务信息（可选）
+├── videos/                 # 视频文件（如果使用视频存储）
+│   ├── chunk_0/
+│   │   ├── episode_0.mp4
+│   │   └── episode_1.mp4
+│   └── chunk_1/
+│       └── episode_2.mp4
+└── data/                   # Parquet 文件
+    ├── chunk_0/
+    │   ├── episode_0.parquet
+    │   └── episode_1.parquet
+    └── chunk_1/
+        └── episode_2.parquet
+</code></pre>
+
+<h3 id="52-infojson">5.2 info.json 格式</h3>
+<pre class="codehilite"><code class="language-json">{
+    &quot;codebase_version&quot;: &quot;v2.1&quot;,
+    &quot;robot_type&quot;: &quot;so100&quot;,
+    &quot;fps&quot;: 30,
+    &quot;total_episodes&quot;: 100,
+    &quot;total_frames&quot;: 150000,
+    &quot;data_path&quot;: &quot;data/chunk_{episode_chunk:04d}/episode_{episode_index:06d}.parquet&quot;,
+    &quot;video_path&quot;: &quot;videos/chunk_{episode_chunk:04d}/episode_{episode_index:06d}.mp4&quot;,
+    &quot;features&quot;: {
+        &quot;observation.state&quot;: {
+            &quot;dtype&quot;: &quot;float32&quot;,
+            &quot;shape&quot;: [2],
+            &quot;names&quot;: [&quot;joint_0&quot;, &quot;joint_1&quot;]
+        },
+        &quot;observation.image&quot;: {
+            &quot;dtype&quot;: &quot;video&quot;,
+            &quot;shape&quot;: [3, 480, 640]
+        },
+        &quot;action&quot;: {
+            &quot;dtype&quot;: &quot;float32&quot;,
+            &quot;shape&quot;: [2],
+            &quot;names&quot;: [&quot;joint_0&quot;, &quot;joint_1&quot;]
+        },
+        &quot;episode_index&quot;: {
+            &quot;dtype&quot;: &quot;int64&quot;,
+            &quot;shape&quot;: [1]
+        },
+        &quot;frame_index&quot;: {
+            &quot;dtype&quot;: &quot;int64&quot;,
+            &quot;shape&quot;: [1]
+        },
+        &quot;timestamp&quot;: {
+            &quot;dtype&quot;: &quot;float64&quot;,
+            &quot;shape&quot;: [1]
+        }
+    }
+}
+</code></pre>
+
+<h3 id="53">5.3 数据帧格式</h3>
+<pre class="codehilite"><code class="language-python">{
+    # 观察数据
+    &quot;observation.state&quot;: np.array([0.5, 0.3]),           # 关节位置
+    &quot;observation.image&quot;: np.array((3, 480, 640)),        # 图像 (C,H,W)
+
+    # 动作数据
+    &quot;action&quot;: np.array([0.6, 0.4]),                     # 动作
+
+    # 元数据
+    &quot;episode_index&quot;: 0,                                  # Episode 索引
+    &quot;frame_index&quot;: 100,                                  # 帧 索引
+    &quot;timestamp&quot;: 3.33,                                   # 时间戳（秒）
+
+    # 可选
+    &quot;task&quot;: &quot;Pick up the object&quot;,                        # 任务描述
+    &quot;reward&quot;: 1.0,                                       # 奖励
+    &quot;next.reward&quot;: 0.8,                                  # 下一帧奖励
+    &quot;next.done&quot;: False,                                  # 是否结束
+}
+</code></pre>
+
+<hr />
+<h2 id="6">6. 模块接口</h2>
+<h3 id="61-api-__init__py">6.1 公开 API (<code>__init__.py</code>)</h3>
+<pre class="codehilite"><code class="language-python"># 核心类
+from lerobot_dataset import (
+    LeRobotDataset,
+    LeRobotDatasetMetadata,
+)
+
+# 工厂函数
+from lerobot_dataset import (
+    load_dataset,
+    load_multiple_datasets,
+)
+
+# 视频处理
+from lerobot_dataset.video import (
+    decode_video_frames,
+    encode_video_frames,
+    get_video_info,
+)
+
+# 采样
+from lerobot_dataset.sampling import (
+    EpisodeAwareSampler,
+)
+
+# 变换
+from lerobot_dataset.transforms import (
+    ImageTransforms,
+    normalize_observation,
+    unnormalize_action,
+)
+
+# 统计
+from lerobot_dataset.stats import (
+    compute_dataset_stats,
+    compute_episode_stats,
+    aggregate_stats,
+)
+</code></pre>
+
+<h3 id="62">6.2 版本信息</h3>
+<pre class="codehilite"><code class="language-python">__version__ = &quot;0.1.0&quot;
+CODEBASE_VERSION = &quot;v2.1&quot;
+</code></pre>
+
+<hr />
+<h2 id="7">7. 与其他模块的接口</h2>
+<h3 id="71">7.1 依赖关系</h3>
+<table>
+<thead>
+<tr>
+<th>依赖模块</th>
+<th>使用的功能</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M01 工具模块</td>
+<td><code>get_device</code>, <code>set_seed</code>, <code>TimerManager</code>, <code>write_video</code></td>
+<td>设备选择、可复现性、性能监控</td>
+</tr>
+<tr>
+<td>M02 配置模块</td>
+<td><code>DatasetConfig</code></td>
+<td>数据集配置</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72">7.2 被依赖关系</h3>
+<table>
+<thead>
+<tr>
+<th>依赖模块</th>
+<th>使用的功能</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M04 策略模块</td>
+<td><code>load_dataset</code>, <code>compute_dataset_stats</code></td>
+<td>加载训练数据</td>
+</tr>
+<tr>
+<td>M11 环境模块</td>
+<td><code>load_dataset</code></td>
+<td>加载演示数据</td>
+</tr>
+<tr>
+<td>M13 训练脚本</td>
+<td><code>load_dataset</code>, <code>EpisodeAwareSampler</code></td>
+<td>创建数据加载器</td>
+</tr>
+</tbody>
+</table>
+<h3 id="73">7.3 数据流</h3>
+<pre class="codehilite"><code>┌─────────────────────────────────────────────────────────────┐
+│                    数据输入来源                              │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │ HuggingFace│  │ 本地文件 │  │ 视频文件 │  │ 实时记录 │   │
+│  │    Hub    │  │          │  │          │  │          │   │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
+│       └─────────────┴─────────────┴─────────────┘         │
+│                           │                                 │
+│                           ▼                                 │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │              M03: waleo-dataset                     │  │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐ │  │
+│  │  │ 加载器  │  │ 解码器  │  │ 采样器  │  │ 统计器  │ │  │
+│  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘ │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                           │                                 │
+│                           ▼                                 │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              Batch of tensors                        │   │
+│  │  {obs: (B,T,...), action: (B,T,...), ...}           │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                           │                                 │
+│                           ▼                                 │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                 │
+│  │   M04    │  │   M11    │  │   M13    │                 │
+│  │  策略     │  │  环境     │  │  训练     │                 │
+│  └──────────┘  └──────────┘  └──────────┘                 │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<hr />
+<h2 id="8">8. 测试策略</h2>
+<h3 id="81">8.1 单元测试</h3>
+<pre class="codehilite"><code class="language-python"># tests/test_dataset.py
+def test_load_dataset():
+    dataset = LeRobotDataset(&quot;waleo/pusht&quot;)
+    assert len(dataset) &gt; 0
+    assert dataset.num_episodes &gt; 0
+
+def test_get_item():
+    dataset = LeRobotDataset(&quot;waleo/pusht&quot;)
+    item = dataset[0]
+    assert &quot;observation.state&quot; in item
+    assert &quot;action&quot; in item
+
+# tests/test_sampling.py
+def test_episode_aware_sampler():
+    dataset = LeRobotDataset(&quot;waleo/pusht&quot;)
+    sampler = EpisodeAwareSampler(
+        episode_data_index=dataset.episode_data_index,
+        episode_indices=[0, 1],
+        shuffle=False
+    )
+    indices = list(sampler)
+    assert all(i &gt;= 0 and i &lt; dataset.episode_data_index[&quot;to&quot;][1] for i in indices)
+
+# tests/test_video.py
+def test_decode_video():
+    frames = decode_video_frames(&quot;test.mp4&quot;, [0.0, 0.5], 0.01)
+    assert frames.shape[0] == 2
+</code></pre>
+
+<h3 id="82">8.2 测试覆盖率目标</h3>
+<ul>
+<li>核心功能：&gt; 85%</li>
+<li>边界情况：&gt; 75%</li>
+<li>总体：&gt; 80%</li>
+</ul>
+<hr />
+<h2 id="9">9. 性能考虑</h2>
+<h3 id="91">9.1 性能目标</h3>
+<ul>
+<li><code>__getitem__</code>: &lt; 50ms (不含视频解码)</li>
+<li>视频解码: &lt; 10ms/帧 (使用 GPU 加速)</li>
+<li>批量加载: &gt; 1000 samples/s</li>
+</ul>
+<h3 id="92">9.2 优化策略</h3>
+<ul>
+<li>使用视频编码减少存储空间</li>
+<li>缓存解码后的帧</li>
+<li>预取和异步加载</li>
+<li>使用 Delta Timestamps 减少数据量</li>
+</ul>
+<hr />
+<h2 id="10">10. 依赖项</h2>
+<h3 id="101">10.1 核心依赖（必需）</h3>
+<pre class="codehilite"><code class="language-toml">[tool.poetry.dependencies]
+python = &quot;^3.9&quot;
+torch = &quot;^2.0.0&quot;
+numpy = &quot;^1.24.0&quot;
+datasets = &quot;^2.14.0&quot;
+huggingface-hub = &quot;^0.19.0&quot;
+pillow = &quot;^10.0.0&quot;
+lerobot-utils = { path = &quot;../lerobot-utils&quot;, develop = true }
+lerobot-config = { path = &quot;../lerobot-config&quot;, develop = true }
+</code></pre>
+
+<h3 id="102">10.2 可选依赖</h3>
+<pre class="codehilite"><code class="language-toml">[tool.poetry.extras]
+video = [&quot;torchvision&quot;, &quot;av&quot;]
+</code></pre>
+
+<hr />
+<h2 id="11">11. 兼容性</h2>
+<h3 id="111-python">11.1 Python 版本</h3>
+<ul>
+<li>最低：Python 3.9</li>
+<li>测试：3.9, 3.10, 3.11</li>
+</ul>
+<h3 id="112">11.2 平台支持</h3>
+<ul>
+<li>Linux: ✅ 完全支持（推荐）</li>
+<li>macOS: ✅ 支持</li>
+<li>Windows: ⚠️ 有限支持（视频编码问题）</li>
+</ul>
+<hr />
+<h2 id="12">12. 文件大小估算</h2>
+<table>
+<thead>
+<tr>
+<th>文件/目录</th>
+<th>估计行数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>core/dataset.py</code></td>
+<td>~400</td>
+<td>主数据集类</td>
+</tr>
+<tr>
+<td><code>core/metadata.py</code></td>
+<td>~200</td>
+<td>元数据类</td>
+</tr>
+<tr>
+<td><code>core/buffer.py</code></td>
+<td>~150</td>
+<td>在线数据收集</td>
+</tr>
+<tr>
+<td><code>video/decoder.py</code></td>
+<td>~250</td>
+<td>视频解码</td>
+</tr>
+<tr>
+<td><code>video/encoder.py</code></td>
+<td>~150</td>
+<td>视频编码</td>
+</tr>
+<tr>
+<td><code>sampling/sampler.py</code></td>
+<td>~100</td>
+<td>采样器</td>
+</tr>
+<tr>
+<td><code>transforms/</code></td>
+<td>~200</td>
+<td>变换和归一化</td>
+</tr>
+<tr>
+<td><code>stats/</code></td>
+<td>~200</td>
+<td>统计计算</td>
+</tr>
+<tr>
+<td><code>utils/</code></td>
+<td>~250</td>
+<td>工具函数</td>
+</tr>
+<tr>
+<td><code>factory.py</code></td>
+<td>~100</td>
+<td>工厂函数</td>
+</tr>
+<tr>
+<td><code>__init__.py</code></td>
+<td>~50</td>
+<td>导出接口</td>
+</tr>
+<tr>
+<td><strong>总计</strong></td>
+<td><strong>~2050</strong></td>
+<td>不含测试</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="13">13. 实现优先级</h2>
+<h3 id="phase-1">Phase 1: 核心功能（必须）</h3>
+<ol>
+<li><code>core/dataset.py</code> - 基础数据集加载</li>
+<li><code>video/decoder.py</code> - 视频解码（pyav 后端）</li>
+<li><code>sampling/sampler.py</code> - EpisodeAwareSampler</li>
+</ol>
+<h3 id="phase-2">Phase 2: 统计和变换（必须）</h3>
+<ol>
+<li><code>stats/compute.py</code> - 统计计算</li>
+<li><code>transforms/normalization.py</code> - 归一化</li>
+<li><code>factory.py</code> - 工厂函数</li>
+</ol>
+<h3 id="phase-3">Phase 3: 高级功能（推荐）</h3>
+<ol>
+<li><code>video/encoder.py</code> - 视频编码</li>
+<li><code>core/metadata.py</code> - 元数据类</li>
+<li><code>core/buffer.py</code> - 在线数据收集</li>
+</ol>
+<hr />
+<h2 id="14">14. 迁移指南</h2>
+<p>从原始 LeRobot 迁移到新模块：</p>
+<pre class="codehilite"><code class="language-python"># 原始代码
+from waleo_dataset import LeRobotDataset
+from waleo_dataset.sampler import EpisodeAwareSampler
+
+# 新代码
+from lerobot_dataset import LeRobotDataset, load_dataset
+from lerobot_dataset.sampling import EpisodeAwareSampler
+
+# API 基本兼容，主要变化：
+# 1. 导入路径简化
+# 2. load_dataset 作为工厂函数
+# 3. 一些参数名称调整
+</code></pre>
+
+<hr />
+<h2 id="15">15. 未来扩展</h2>
+<h3 id="151">15.1 可能的扩展</h3>
+<ul>
+<li>支持更多视频编解码器</li>
+<li>数据压缩和流式加载</li>
+<li>增量数据集更新</li>
+<li>联邦学习支持</li>
+</ul>
+<h3 id="152">15.2 版本计划</h3>
+<ul>
+<li>v0.1.0: 基础功能实现</li>
+<li>v0.2.0: 性能优化</li>
+<li>v0.3.0: 高级功能</li>
+</ul>
+<hr />
+<h2 id="16">16. 变更日志</h2>
+<h3 id="v010-2026-01-08">v0.1.0 (2026-01-08)</h3>
+<ul>
+<li>初始设计</li>
+<li>定义核心 API</li>
+<li>确定数据格式规范</li>
+</ul>
+</body>
+</html>

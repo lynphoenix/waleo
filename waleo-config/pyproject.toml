@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "waleo-config"
+version = "0.1.0"
+description = "Waleo 配置管理模块"
+authors = ["Waleo Team"]
+readme = "README.md"
+packages = [{include = "waleo_config"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

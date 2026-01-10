@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>README.md</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        h3 { font-size: 1.25em; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        table th {
+            background: #f4f4f4;
+            font-weight: 600;
+        }
+        blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 16px;
+            color: #666;
+            margin: 20px 0;
+        }
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+<h1 id="waleo-utils">Waleo Utils</h1>
+<p>Waleo 基础设施工具模块 - 提供设备管理、分布式训练、通信、日志、随机数、时间测量和 I/O 等基础设施功能。</p>
+<h2 id="_1">功能特性</h2>
+<h3 id="device-management">设备管理 (Device Management)</h3>
+<ul>
+<li>自动选择训练和推理设备（CUDA、MPS、CPU）</li>
+<li>分布式训练环境初始化和管理</li>
+<li>进程间同步</li>
+</ul>
+<h3 id="distributed-training">分布式训练 (Distributed Training)</h3>
+<ul>
+<li>单节点多 GPU 训练启动器</li>
+<li>多节点训练启动器</li>
+<li>梯度同步和聚合</li>
+<li>分布式状态管理</li>
+</ul>
+<h3 id="rpc-rpc-communication">RPC 通信 (RPC Communication)</h3>
+<ul>
+<li>同步和异步 RPC 客户端</li>
+<li>RPC 服务端</li>
+<li>流式 RPC 调用</li>
+<li>基于 Socket 的通信协议</li>
+</ul>
+<h3 id="logging-with-tensorboard">日志 (Logging with TensorBoard)</h3>
+<ul>
+<li>TensorBoard 日志记录器</li>
+<li>指标跟踪和统计</li>
+<li>支持标量、图像、视频、直方图等多种数据类型</li>
+</ul>
+<h3 id="random-number-management">随机数管理 (Random Number Management)</h3>
+<ul>
+<li>可复现的随机数生成</li>
+<li>RNG 状态保存和恢复</li>
+<li>分支 RNG 上下文管理器</li>
+</ul>
+<h3 id="timing">时间测量 (Timing)</h3>
+<ul>
+<li>代码块计时</li>
+<li>计时器管理器</li>
+<li>性能分析工具</li>
+</ul>
+<h3 id="io-io-utilities">I/O 工具 (I/O Utilities)</h3>
+<ul>
+<li>视频读写（支持 imageio 和 OpenCV）</li>
+<li>图像读写</li>
+<li>JSON 读写（支持复杂数据类型）</li>
+</ul>
+<h2 id="_2">安装</h2>
+<pre class="codehilite"><code class="language-bash"># 基础安装
+pip install waleo-utils
+
+# 安装所有可选依赖
+pip install waleo-utils[all]
+
+# 仅安装视频相关依赖
+pip install waleo-utils[video]
+
+# 仅安装 OpenCV
+pip install waleo-utils[opencv]
+
+# 开发安装
+pip install waleo-utils[dev]
+</code></pre>
+
+<h2 id="_3">快速开始</h2>
+<h3 id="_4">设备管理</h3>
+<pre class="codehilite"><code class="language-python">import torch
+from waleo_utils import get_training_device, get_inference_device
+
+# 获取训练设备（仅 CUDA）
+device = get_training_device()
+model.to(device)
+
+# 获取推理设备（CUDA &gt; MPS &gt; CPU）
+device = get_inference_device()
+</code></pre>
+
+<h3 id="_5">分布式训练</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import setup_distributed, get_rank, is_main_process
+
+# 初始化分布式环境
+setup_distributed()
+
+# 获取当前进程的 rank
+rank = get_rank()
+
+# 仅在主进程执行
+if is_main_process():
+    print(&quot;Running on main process&quot;)
+</code></pre>
+
+<h3 id="tensorboard">TensorBoard 日志</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import create_logger
+
+# 创建日志记录器
+logger = create_logger(log_dir=&quot;logs&quot;, name=&quot;experiment&quot;)
+
+# 记录标量
+logger.log_scalar(&quot;train/loss&quot;, 0.123, step=100)
+logger.log_scalar(&quot;train/accuracy&quot;, 0.956, step=100)
+
+# 记录图像
+logger.log_image(&quot;train/image&quot;, image_tensor, step=100)
+
+# 增加步数
+logger.increment_step()
+</code></pre>
+
+<h3 id="_6">指标跟踪</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import MetricTracker
+
+# 创建指标跟踪器
+tracker = MetricTracker(window_size=100)
+
+# 更新指标
+tracker.update(&quot;loss&quot;, 0.123)
+tracker.update(&quot;accuracy&quot;, 0.956)
+
+# 获取平均值
+avg_loss = tracker.get_average(&quot;loss&quot;)
+print(f&quot;Average loss: {avg_loss}&quot;)
+</code></pre>
+
+<h3 id="rpc">RPC 通信</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import RPCServer, RPCClient
+
+# 服务端
+def add(a, b):
+    return a + b
+
+server = RPCServer(host=&quot;0.0.0.0&quot;, port=5000)
+server.register_method(&quot;add&quot;, add)
+server.start()
+
+# 客户端
+client = RPCClient(host=&quot;localhost&quot;, port=5000)
+result = client.call(&quot;add&quot;, 1, 2)
+print(f&quot;Result: {result}&quot;)
+</code></pre>
+
+<h3 id="_7">时间测量</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import TimerManager, timer
+
+# 使用计时器管理器
+tm = TimerManager()
+
+with tm.time(&quot;data_loading&quot;):
+    data = load_data()
+
+with tm.time(&quot;forward_pass&quot;):
+    output = model(input)
+
+tm.print_summary()
+
+# 使用简单计时器
+with timer(&quot;Training&quot;):
+    train_model()
+</code></pre>
+
+<h3 id="_8">随机数管理</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import set_seed, RNGManager
+
+# 设置全局随机种子
+set_seed(42)
+
+# 使用 RNG 管理器
+rng = RNGManager(seed=42)
+rng.save_state(&quot;rng_state.pkl&quot;)
+rng.load_state(&quot;rng_state.pkl&quot;)
+</code></pre>
+
+<h3 id="io">I/O 操作</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import save_video, load_video, save_json, load_json
+
+# 保存视频
+save_video(frames, &quot;output.mp4&quot;, fps=30)
+
+# 加载视频
+frames = load_video(&quot;input.mp4&quot;)
+
+# 保存 JSON
+save_json({&quot;loss&quot;: 0.123}, &quot;metrics.json&quot;)
+
+# 加载 JSON
+data = load_json(&quot;config.json&quot;)
+</code></pre>
+
+<h2 id="_9">架构设计</h2>
+<p>Waleo Utils 遵循模块化设计，每个子模块都专注于特定功能：</p>
+<pre class="codehilite"><code>waleo-utils/
+├── waleo_utils/
+│   ├── constants.py          # 常量定义
+│   ├── device/               # 设备管理
+│   ├── distributed/          # 分布式训练
+│   ├── communication/        # RPC 通信
+│   ├── logging/              # TensorBoard 日志
+│   ├── random/               # 随机数管理
+│   ├── timing/               # 时间测量
+│   └── io/                   # I/O 工具
+└── tests/                    # 单元测试
+</code></pre>
+
+<h2 id="_10">依赖项</h2>
+<h3 id="_11">必需依赖</h3>
+<ul>
+<li>torch &gt;= 1.12.0</li>
+<li>numpy &gt;= 1.20.0</li>
+<li>tensorboard &gt;= 2.10.0</li>
+<li>pillow &gt;= 9.0.0</li>
+</ul>
+<h3 id="_12">可选依赖</h3>
+<ul>
+<li>imageio &gt;= 2.20.0 (视频 I/O)</li>
+<li>opencv-python &gt;= 4.5.0 (视频/图像 I/O)</li>
+<li>orjson &gt;= 3.8.0 (快速 JSON)</li>
+</ul>
+<h2 id="_13">许可证</h2>
+<p>Apache License 2.0</p>
+<h2 id="_14">贡献</h2>
+<p>欢迎提交 Issue 和 Pull Request！</p>
+<h2 id="_15">联系方式</h2>
+<ul>
+<li>GitHub: https://github.com/waleo-robotics/waleo-utils</li>
+<li>Issues: https://github.com/waleo-robotics/waleo-utils/issues</li>
+</ul>
+</body>
+</html>

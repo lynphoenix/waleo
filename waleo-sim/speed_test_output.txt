@@ -1,0 +1,9 @@
+usage: train_ppo_visual.py [-h] [--total-steps TOTAL_STEPS] [--output OUTPUT]
+                           [--device DEVICE] [--gamma GAMMA] [--lr LR]
+                           [--image-size IMAGE_SIZE] [--test]
+                           [--steps-per-update STEPS_PER_UPDATE]
+                           [--batch-size BATCH_SIZE] [--num-epochs NUM_EPOCHS]
+                           [--resume RESUME]
+train_ppo_visual.py: error: unrecognized arguments:    
+
+ERROR conda.cli.main_run:execute(127): `conda run python -u examples/maniskill/train_ppo_visual.py  --test  --steps-per-update 200  --batch-size 256  --output training_log_speed_test.txt` failed. (See above for error)
