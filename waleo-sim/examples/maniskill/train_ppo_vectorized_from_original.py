@@ -303,6 +303,24 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
+    # 应用RJ2506自定义配置
+    if args.robot_uids == "rj2506":
+        try:
+            # 导入并应用RJ2506配置
+            import sys
+            import os
+            import importlib.util
+            # 直接加载rj2506_config模块
+            config_dir = os.path.dirname(os.path.abspath(__file__))
+            config_path = os.path.join(config_dir, "rj2506_config.py")
+            spec = importlib.util.spec_from_file_location("rj2506_config", config_path)
+            rj2506_config = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(rj2506_config)
+            rj2506_config.apply_rj2506_config()
+        except Exception as e:
+            print(f"Warning: 无法加载RJ2506配置: {e}")
+            print("使用默认配置")
+
     # env setup
     env_kwargs = dict(obs_mode="rgb", render_mode=args.render_mode, sim_backend="physx_cuda")
     if args.control_mode is not None:
