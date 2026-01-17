@@ -16,6 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 # 导入自定义环境（零库修改）
 from rj2506_env import _RJ2506PickCubeOverridden  # 注册RJ2506环境
 from rj2506_config_minimal import apply_rj2506_config_minimal  # 运行时配置
+from forward_lean_wrapper import ForwardLeanWrapper, FORWARD_LEAN_BODY_JOINT2  # 前倾姿态包装器
 
 # 应用配置
 apply_rj2506_config_minimal()
@@ -262,6 +263,12 @@ if __name__ == "__main__":
 
     eval_envs = gym.make(args.env_id, num_envs=args.num_eval_envs, reconfiguration_freq=1, **env_kwargs)
     envs = gym.make(args.env_id, num_envs=args.num_envs, reconfiguration_freq=None, **env_kwargs)
+
+    # 应用前倾姿态包装器（在FlattenRGBDObservationWrapper之前）
+    if args.robot_uids == "rj2506":
+        envs = ForwardLeanWrapper(envs)
+        eval_envs = ForwardLeanWrapper(eval_envs)
+        print(f"✓ 已应用RJ2506前倾姿态包装器 (body_joint2={FORWARD_LEAN_BODY_JOINT2:.2f} rad ≈ {FORWARD_LEAN_BODY_JOINT2 * 180 / np.pi:.0f}°)")
 
     # wrappers
     envs = FlattenRGBDObservationWrapper(envs, rgb=True, depth=False, state=True)
