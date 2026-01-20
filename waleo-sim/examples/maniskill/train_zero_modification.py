@@ -61,7 +61,9 @@ class Args:
     gae_lambda: float = 0.9
     num_minibatches: int = 32
     update_epochs: int = 4
-    ent_coef: float = 0.01  # 使用正熵系数
+    ent_coef: float = 0.05  # 初始熵系数（动态衰减）
+    ent_coef_min: float = 0.001  # 最小熵系数
+    ent_coef_decay: str = "linear"  # 熵系数衰减方式: linear, exponential, cosine
     clip_coef: float = 0.2
     vf_coef: float = 0.5
     max_grad_norm: float = 0.5
@@ -313,7 +315,19 @@ if __name__ == "__main__":
     cumulative_times = defaultdict(float)
 
     for iteration in range(1, args.num_iterations + 1):
-        print(f"Epoch: {iteration}, global_step={global_step}")
+        # 动态熵系数计算
+        progress = (iteration - 1) / args.num_iterations  # 0到1
+        if args.ent_coef_decay == "linear":
+            current_ent_coef = args.ent_coef - (args.ent_coef - args.ent_coef_min) * progress
+        elif args.ent_coef_decay == "exponential":
+            current_ent_coef = args.ent_coef_min + (args.ent_coef - args.ent_coef_min) * (1 - progress) ** 2
+        elif args.ent_coef_decay == "cosine":
+            current_ent_coef = args.ent_coef_min + (args.ent_coef - args.ent_coef_min) * 0.5 * (1 + np.cos(progress * np.pi))
+        else:
+            current_ent_coef = args.ent_coef  # 不衰减
+
+        if iteration % 25 == 1:
+            print(f"Epoch: {iteration}, global_step={global_step}, ent_coef={current_ent_coef:.4f}")
         final_values = torch.zeros((args.num_steps, args.num_envs), device=device)
         agent.eval()
 
@@ -441,7 +455,7 @@ if __name__ == "__main__":
                 v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
                 entropy_loss = entropy.mean()
-                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+                loss = pg_loss - current_ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -459,6 +473,7 @@ if __name__ == "__main__":
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar("charts/ent_coef", current_ent_coef, global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
