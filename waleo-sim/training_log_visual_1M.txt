@@ -1,0 +1,154 @@
+================================================================================
+PPO 训练 - 视觉版本 (相机 + 状态)
+================================================================================
+设备: cuda
+总步数: 1000000
+每次更新步数: 100
+更新次数: 10000
+图像尺寸: (128, 128)
+使用相机: True (头部 + 腕部)
+================================================================================
+
+创建环境...
+✓ state_dim=9, action_dim=8
+✓ 相机已启用
+创建智能体...
+✓ 智能体已创建
+✓ 参数量: 5,731,409 (可训练: 5,731,409)
+
+开始训练...
+
+Update 1/10000 | Step 100/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0093 | Value Loss: 0.0337 | SPS: 57 | ETA: 292.4min
+Update 10/10000 | Step 1000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0975 | Value Loss: 0.0963 | SPS: 95 | ETA: 175.3min
+Update 20/10000 | Step 2000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0687 | Value Loss: 0.0993 | SPS: 99 | ETA: 168.0min
+Update 30/10000 | Step 3000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1563 | Value Loss: 0.1457 | SPS: 104 | ETA: 159.8min
+Update 40/10000 | Step 4000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1188 | Value Loss: 0.0711 | SPS: 105 | ETA: 158.1min
+Update 50/10000 | Step 5000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0273 | Value Loss: 0.1113 | SPS: 108 | ETA: 153.5min
+Update 60/10000 | Step 6000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0108 | Value Loss: 0.0512 | SPS: 109 | ETA: 152.0min
+Update 70/10000 | Step 7000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0284 | Value Loss: 0.0214 | SPS: 110 | ETA: 150.5min
+Update 80/10000 | Step 8000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.1416 | Value Loss: 0.0193 | SPS: 111 | ETA: 148.9min
+Update 90/10000 | Step 9000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1649 | Value Loss: 0.0218 | SPS: 110 | ETA: 150.2min
+Update 100/10000 | Step 10000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.1451 | Value Loss: 0.0052 | SPS: 110 | ETA: 150.0min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_100.pt
+Update 110/10000 | Step 11000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.2685 | Value Loss: 0.0099 | SPS: 111 | ETA: 148.5min
+Update 120/10000 | Step 12000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0723 | Value Loss: 0.0016 | SPS: 112 | ETA: 147.0min
+Update 130/10000 | Step 13000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0140 | Value Loss: 0.0020 | SPS: 111 | ETA: 148.2min
+Update 140/10000 | Step 14000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1315 | Value Loss: 0.0013 | SPS: 111 | ETA: 148.0min
+Update 150/10000 | Step 15000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0669 | Value Loss: 0.0008 | SPS: 112 | ETA: 146.6min
+Update 160/10000 | Step 16000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.4792 | Value Loss: 0.0016 | SPS: 112 | ETA: 146.4min
+Update 170/10000 | Step 17000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0155 | Value Loss: 0.0004 | SPS: 112 | ETA: 146.3min
+Update 180/10000 | Step 18000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0392 | Value Loss: 0.0059 | SPS: 112 | ETA: 146.1min
+Update 190/10000 | Step 19000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0572 | Value Loss: 0.0041 | SPS: 112 | ETA: 146.0min
+Update 200/10000 | Step 20000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0878 | Value Loss: 0.0472 | SPS: 113 | ETA: 144.5min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_200.pt
+Update 210/10000 | Step 21000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0850 | Value Loss: 0.0911 | SPS: 112 | ETA: 145.7min
+Update 220/10000 | Step 22000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1475 | Value Loss: 0.2503 | SPS: 113 | ETA: 144.2min
+Update 230/10000 | Step 23000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0031 | Value Loss: 0.0581 | SPS: 112 | ETA: 145.4min
+Update 240/10000 | Step 24000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0869 | Value Loss: 0.0932 | SPS: 112 | ETA: 145.2min
+Update 250/10000 | Step 25000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.1457 | Value Loss: 0.0728 | SPS: 112 | ETA: 145.1min
+Update 260/10000 | Step 26000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0062 | Value Loss: 0.0356 | SPS: 112 | ETA: 144.9min
+Update 270/10000 | Step 27000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1302 | Value Loss: 0.0145 | SPS: 112 | ETA: 144.8min
+Update 280/10000 | Step 28000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.2084 | Value Loss: 0.2785 | SPS: 112 | ETA: 144.6min
+Update 290/10000 | Step 29000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1335 | Value Loss: 0.0488 | SPS: 113 | ETA: 143.2min
+Update 300/10000 | Step 30000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0953 | Value Loss: 0.1120 | SPS: 113 | ETA: 143.1min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_300.pt
+Update 310/10000 | Step 31000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0554 | Value Loss: 0.1889 | SPS: 113 | ETA: 142.9min
+Update 320/10000 | Step 32000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.2324 | Value Loss: 0.2703 | SPS: 112 | ETA: 144.0min
+Update 330/10000 | Step 33000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.2161 | Value Loss: 0.0983 | SPS: 113 | ETA: 142.6min
+Update 340/10000 | Step 34000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0969 | Value Loss: 0.0973 | SPS: 112 | ETA: 143.8min
+Update 350/10000 | Step 35000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.1761 | Value Loss: 0.0384 | SPS: 113 | ETA: 142.3min
+Update 360/10000 | Step 36000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0267 | Value Loss: 0.0263 | SPS: 112 | ETA: 143.5min
+Update 370/10000 | Step 37000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1660 | Value Loss: 0.0276 | SPS: 113 | ETA: 142.0min
+Update 380/10000 | Step 38000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0089 | Value Loss: 0.1024 | SPS: 113 | ETA: 141.9min
+Update 390/10000 | Step 39000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1752 | Value Loss: 0.1287 | SPS: 112 | ETA: 143.0min
+Update 400/10000 | Step 40000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0098 | Value Loss: 0.0344 | SPS: 112 | ETA: 142.9min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_400.pt
+Update 410/10000 | Step 41000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0035 | Value Loss: 0.1504 | SPS: 112 | ETA: 142.7min
+Update 420/10000 | Step 42000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0299 | Value Loss: 0.1745 | SPS: 112 | ETA: 142.6min
+Update 430/10000 | Step 43000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0389 | Value Loss: 0.2259 | SPS: 112 | ETA: 142.4min
+Update 440/10000 | Step 44000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0676 | Value Loss: 0.1100 | SPS: 113 | ETA: 141.0min
+Update 450/10000 | Step 45000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0501 | Value Loss: 0.0807 | SPS: 113 | ETA: 140.9min
+Update 460/10000 | Step 46000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1025 | Value Loss: 0.1520 | SPS: 113 | ETA: 140.7min
+Update 470/10000 | Step 47000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.1070 | Value Loss: 0.0685 | SPS: 113 | ETA: 140.6min
+Update 480/10000 | Step 48000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.1744 | Value Loss: 0.0703 | SPS: 113 | ETA: 140.4min
+Update 490/10000 | Step 49000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0555 | Value Loss: 0.0546 | SPS: 113 | ETA: 140.3min
+Update 500/10000 | Step 50000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0764 | Value Loss: 0.1519 | SPS: 113 | ETA: 140.1min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_500.pt
+Update 510/10000 | Step 51000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0433 | Value Loss: 0.0611 | SPS: 113 | ETA: 140.0min
+Update 520/10000 | Step 52000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1215 | Value Loss: 0.1485 | SPS: 113 | ETA: 139.8min
+Update 530/10000 | Step 53000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.1215 | Value Loss: 0.0295 | SPS: 113 | ETA: 139.7min
+Update 540/10000 | Step 54000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1988 | Value Loss: 0.0197 | SPS: 113 | ETA: 139.5min
+Update 550/10000 | Step 55000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0661 | Value Loss: 0.0267 | SPS: 113 | ETA: 139.4min
+Update 560/10000 | Step 56000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0755 | Value Loss: 0.0765 | SPS: 113 | ETA: 139.2min
+Update 570/10000 | Step 57000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.2504 | Value Loss: 0.1524 | SPS: 113 | ETA: 139.1min
+Update 580/10000 | Step 58000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0183 | Value Loss: 0.0317 | SPS: 113 | ETA: 138.9min
+Update 590/10000 | Step 59000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1129 | Value Loss: 0.0861 | SPS: 113 | ETA: 138.8min
+Update 600/10000 | Step 60000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0932 | Value Loss: 0.0808 | SPS: 114 | ETA: 137.4min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_600.pt
+Update 610/10000 | Step 61000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.2361 | Value Loss: 0.0403 | SPS: 114 | ETA: 137.3min
+Update 620/10000 | Step 62000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0441 | Value Loss: 0.0559 | SPS: 114 | ETA: 137.1min
+Update 630/10000 | Step 63000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1653 | Value Loss: 0.0814 | SPS: 114 | ETA: 137.0min
+Update 640/10000 | Step 64000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.1168 | Value Loss: 0.0233 | SPS: 114 | ETA: 136.8min
+Update 650/10000 | Step 65000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1815 | Value Loss: 0.1028 | SPS: 114 | ETA: 136.7min
+Update 660/10000 | Step 66000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0679 | Value Loss: 0.0563 | SPS: 114 | ETA: 136.5min
+Update 670/10000 | Step 67000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0566 | Value Loss: 0.0345 | SPS: 114 | ETA: 136.4min
+Update 680/10000 | Step 68000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0150 | Value Loss: 0.0420 | SPS: 114 | ETA: 136.3min
+Update 690/10000 | Step 69000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.1123 | Value Loss: 0.0315 | SPS: 114 | ETA: 136.1min
+Update 700/10000 | Step 70000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1008 | Value Loss: 0.1051 | SPS: 114 | ETA: 136.0min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_700.pt
+Update 710/10000 | Step 71000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1656 | Value Loss: 0.1010 | SPS: 114 | ETA: 135.8min
+Update 720/10000 | Step 72000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0663 | Value Loss: 0.0923 | SPS: 114 | ETA: 135.7min
+Update 730/10000 | Step 73000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0755 | Value Loss: 0.0392 | SPS: 114 | ETA: 135.5min
+Update 740/10000 | Step 74000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1263 | Value Loss: 0.0618 | SPS: 114 | ETA: 135.4min
+Update 750/10000 | Step 75000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.1005 | Value Loss: 0.0179 | SPS: 114 | ETA: 135.2min
+Update 760/10000 | Step 76000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0117 | Value Loss: 0.0129 | SPS: 114 | ETA: 135.1min
+Update 770/10000 | Step 77000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0995 | Value Loss: 0.0542 | SPS: 114 | ETA: 134.9min
+Update 780/10000 | Step 78000/1000000 | Mean Reward: 0.00 | Policy Loss: 0.0807 | Value Loss: 0.0116 | SPS: 114 | ETA: 134.8min
+Update 790/10000 | Step 79000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.2424 | Value Loss: 0.0279 | SPS: 114 | ETA: 134.6min
+Update 800/10000 | Step 80000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.0085 | Value Loss: 0.0033 | SPS: 114 | ETA: 134.5min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_800.pt
+Update 810/10000 | Step 81000/1000000 | Mean Reward: 0.00 | Policy Loss: -0.1214 | Value Loss: 0.0200 | SPS: 114 | ETA: 134.4min
+Update 820/10000 | Step 82000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.2469 | Value Loss: 0.0398 | SPS: 114 | ETA: 134.2min
+Update 830/10000 | Step 83000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0528 | Value Loss: 0.0120 | SPS: 114 | ETA: 134.1min
+Update 840/10000 | Step 84000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0785 | Value Loss: 0.0122 | SPS: 114 | ETA: 133.9min
+Update 850/10000 | Step 85000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.1024 | Value Loss: 0.0530 | SPS: 114 | ETA: 133.8min
+Update 860/10000 | Step 86000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0161 | Value Loss: 0.0473 | SPS: 114 | ETA: 133.6min
+Update 870/10000 | Step 87000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0458 | Value Loss: 0.0046 | SPS: 114 | ETA: 133.5min
+Update 880/10000 | Step 88000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0446 | Value Loss: 0.0320 | SPS: 114 | ETA: 133.3min
+Update 890/10000 | Step 89000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0648 | Value Loss: 0.0017 | SPS: 114 | ETA: 133.2min
+Update 900/10000 | Step 90000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.1440 | Value Loss: 0.0006 | SPS: 114 | ETA: 133.0min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_900.pt
+Update 910/10000 | Step 91000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0956 | Value Loss: 0.0005 | SPS: 114 | ETA: 132.9min
+Update 920/10000 | Step 92000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.1785 | Value Loss: 0.0118 | SPS: 114 | ETA: 132.7min
+Update 930/10000 | Step 93000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.1863 | Value Loss: 0.0060 | SPS: 114 | ETA: 132.6min
+Update 940/10000 | Step 94000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0619 | Value Loss: 0.0044 | SPS: 114 | ETA: 132.5min
+Update 950/10000 | Step 95000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.1445 | Value Loss: 0.0453 | SPS: 114 | ETA: 132.3min
+Update 960/10000 | Step 96000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.0545 | Value Loss: 0.0612 | SPS: 114 | ETA: 132.2min
+Update 970/10000 | Step 97000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0140 | Value Loss: 0.0892 | SPS: 114 | ETA: 132.0min
+Update 980/10000 | Step 98000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.1068 | Value Loss: 0.0665 | SPS: 114 | ETA: 131.9min
+Update 990/10000 | Step 99000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.1999 | Value Loss: 0.2753 | SPS: 114 | ETA: 131.7min
+Update 1000/10000 | Step 100000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.1190 | Value Loss: 0.0592 | SPS: 114 | ETA: 131.6min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_1000.pt
+Update 1010/10000 | Step 101000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0281 | Value Loss: 0.0445 | SPS: 114 | ETA: 131.4min
+Update 1020/10000 | Step 102000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0289 | Value Loss: 0.0848 | SPS: 114 | ETA: 131.3min
+Update 1030/10000 | Step 103000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.2388 | Value Loss: 0.1429 | SPS: 114 | ETA: 131.1min
+Update 1040/10000 | Step 104000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.0297 | Value Loss: 0.0808 | SPS: 114 | ETA: 131.0min
+Update 1050/10000 | Step 105000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.0168 | Value Loss: 0.0740 | SPS: 114 | ETA: 130.8min
+Update 1060/10000 | Step 106000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.0057 | Value Loss: 0.0955 | SPS: 114 | ETA: 130.7min
+Update 1070/10000 | Step 107000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0545 | Value Loss: 0.2300 | SPS: 114 | ETA: 130.6min
+Update 1080/10000 | Step 108000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.1584 | Value Loss: 0.2192 | SPS: 114 | ETA: 130.4min
+Update 1090/10000 | Step 109000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0577 | Value Loss: 0.2380 | SPS: 114 | ETA: 130.3min
+Update 1100/10000 | Step 110000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.1879 | Value Loss: 0.1195 | SPS: 114 | ETA: 130.1min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_1100.pt
+Update 1110/10000 | Step 111000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.0295 | Value Loss: 0.2048 | SPS: 114 | ETA: 130.0min
+Update 1120/10000 | Step 112000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.0755 | Value Loss: 2.3995 | SPS: 114 | ETA: 129.8min
+Update 1130/10000 | Step 113000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0615 | Value Loss: 0.1203 | SPS: 114 | ETA: 129.7min
+Update 1140/10000 | Step 114000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.1144 | Value Loss: 0.1762 | SPS: 114 | ETA: 129.5min
+Update 1150/10000 | Step 115000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0630 | Value Loss: 0.1596 | SPS: 114 | ETA: 129.4min
+Update 1160/10000 | Step 116000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.1908 | Value Loss: 0.1295 | SPS: 114 | ETA: 129.2min
+Update 1170/10000 | Step 117000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0367 | Value Loss: 0.0947 | SPS: 114 | ETA: 129.1min
+Update 1180/10000 | Step 118000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.1814 | Value Loss: 0.0742 | SPS: 114 | ETA: 128.9min
+Update 1190/10000 | Step 119000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.0479 | Value Loss: 0.1004 | SPS: 114 | ETA: 128.8min
+Update 1200/10000 | Step 120000/1000000 | Mean Reward: 1.74 | Policy Loss: -0.0493 | Value Loss: 0.0564 | SPS: 114 | ETA: 128.7min
+  ✓ 保存检查点: checkpoints/ppo_visual_update_1200.pt
+Update 1210/10000 | Step 121000/1000000 | Mean Reward: 1.74 | Policy Loss: 0.0536 | Value Loss: 0.1016 | SPS: 114 | ETA: 128.5min

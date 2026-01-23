@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>README.md</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        h3 { font-size: 1.25em; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        table th {
+            background: #f4f4f4;
+            font-weight: 600;
+        }
+        blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 16px;
+            color: #666;
+            margin: 20px 0;
+        }
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+<h1 id="waleo-utils">Waleo-utils 文档</h1>
+<p>Waleo-utils 是 Waleo 机器人学习框架的基础设施工具模块，提供设备管理、分布式训练、通信、日志、随机数、时间测量和 I/O 等核心功能。</p>
+<h2 id="_1">模块概览</h2>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>功能</th>
+<th>文档</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>设备管理</strong></td>
+<td>GPU/CPU 设备选择、分布式训练环境设置</td>
+<td><a href="device.md">device.md</a></td>
+</tr>
+<tr>
+<td><strong>分布式训练</strong></td>
+<td>多进程/多节点训练、梯度同步</td>
+<td><a href="distributed.md">distributed.md</a></td>
+</tr>
+<tr>
+<td><strong>RPC 通信</strong></td>
+<td>远程过程调用、进程间通信</td>
+<td><a href="communication.md">communication.md</a></td>
+</tr>
+<tr>
+<td><strong>日志</strong></td>
+<td>TensorBoard 日志记录、指标跟踪</td>
+<td><a href="logging.md">logging.md</a></td>
+</tr>
+<tr>
+<td><strong>随机数</strong></td>
+<td>可复现的随机数生成、状态管理</td>
+<td><a href="random.md">random.md</a></td>
+</tr>
+<tr>
+<td><strong>时间测量</strong></td>
+<td>代码性能分析、计时器</td>
+<td><a href="timing.md">timing.md</a></td>
+</tr>
+<tr>
+<td><strong>I/O</strong></td>
+<td>视频/图像/JSON 文件操作</td>
+<td><a href="io.md">io.md</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">快速开始</h2>
+<h3 id="_3">安装</h3>
+<pre class="codehilite"><code class="language-bash"># 基础安装
+pip install waleo-utils
+
+# 安装所有依赖（包括视频、OpenCV、orjson）
+pip install waleo-utils[all]
+</code></pre>
+
+<h3 id="_4">基础使用</h3>
+<pre class="codehilite"><code class="language-python">import waleo_utils
+
+# 1. 设备管理
+from waleo_utils import get_training_device
+device = get_training_device()
+model.to(device)
+
+# 2. 设置随机种子
+from waleo_utils import set_seed
+set_seed(42)
+
+# 3. TensorBoard 日志
+from waleo_utils import create_logger
+logger = create_logger(&quot;logs&quot;, &quot;experiment&quot;)
+logger.log_scalar(&quot;loss&quot;, 0.123, step=100)
+
+# 4. 性能分析
+from waleo_utils import TimerManager
+tm = TimerManager()
+with tm.time(&quot;data_loading&quot;):
+    data = load_data()
+tm.print_summary()
+</code></pre>
+
+<h2 id="_5">按场景查找文档</h2>
+<h3 id="_6">训练相关</h3>
+<ul>
+<li><strong>单 GPU 训练</strong>：<a href="device.md#单-gpu-训练">设备管理</a></li>
+<li><strong>多 GPU 训练</strong>：<a href="distributed.md#场景-1数据并行训练">分布式训练</a></li>
+<li><strong>多节点训练</strong>：<a href="distributed.md#场景-4多节点配置">分布式训练</a></li>
+<li><strong>训练日志</strong>：<a href="logging.md#场景-1训练循环日志">日志模块</a></li>
+</ul>
+<h3 id="_7">实验管理</h3>
+<ul>
+<li><strong>可复现性</strong>：<a href="random.md#场景-1实验可复现性">随机数管理</a></li>
+<li><strong>配置文件</strong>：<a href="io.md#场景-1配置文件管理">I/O 模块</a></li>
+<li><strong>超参数对比</strong>：<a href="logging.md#场景-4超参数对比">日志模块</a></li>
+</ul>
+<h3 id="_8">性能优化</h3>
+<ul>
+<li><strong>性能分析</strong>：<a href="timing.md#场景-1训练循环性能分析">时间测量</a></li>
+<li><strong>瓶颈识别</strong>：<a href="timing.md#场景-4瓶颈识别">时间测量</a></li>
+</ul>
+<h3 id="_9">系统集成</h3>
+<ul>
+<li><strong>远程推理</strong>：<a href="communication.md#场景-1分布式模型推理">RPC 通信</a></li>
+<li><strong>参数服务器</strong>：<a href="communication.md#场景-3参数服务器">RPC 通信</a></li>
+<li><strong>监控服务</strong>：<a href="communication.md#场景-4监控和日志服务">RPC 通信</a></li>
+</ul>
+<h2 id="_10">常见任务</h2>
+<h3 id="1">1. 设置训练环境</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import set_seed, get_training_device
+from waleo_utils.logging import create_logger
+from waleo_utils.timing import TimerManager
+
+# 设置随机种子
+set_seed(42)
+
+# 获取设备
+device = get_training_device()
+model.to(device)
+
+# 创建日志
+logger = create_logger(&quot;logs&quot;, &quot;train&quot;)
+
+# 创建计时器
+tm = TimerManager()
+</code></pre>
+
+<h3 id="2">2. 分布式训练</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import launch_multi_process
+import torch
+
+def train(rank, world_size):
+    # 初始化
+    dist.init_process_group(&quot;nccl&quot;, rank=rank, world_size=world_size)
+    torch.cuda.set_device(rank)
+
+    # 创建模型
+    model = Model().cuda(rank)
+    model = torch.nn.parallel.DistributedDataParallel(model)
+
+    # 训练...
+    for epoch in range(10):
+        for batch in dataloader:
+            loss = model(batch)
+            loss.backward()
+            optimizer.step()
+
+# 启动 4 进程训练
+launch_multi_process(num_gpus=4, func=train)
+</code></pre>
+
+<h3 id="3">3. 记录训练指标</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import create_logger, MetricTracker
+
+logger = create_logger(&quot;logs&quot;, &quot;experiment&quot;)
+tracker = MetricTracker(window_size=100)
+
+for epoch in range(10):
+    for batch in dataloader:
+        loss = train_step()
+
+        # 跟踪
+        tracker.update(&quot;loss&quot;, loss.item())
+
+        # 记录
+        if batch % 10 == 0:
+            logger.log_scalar(&quot;train/loss&quot;, loss.item(), logger.step)
+            logger.log_scalar(&quot;train/avg_loss&quot;, tracker.get_average(&quot;loss&quot;), logger.step)
+            logger.increment_step()
+</code></pre>
+
+<h3 id="4">4. 性能分析</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import TimerManager
+
+tm = TimerManager()
+
+for batch in dataloader:
+    with tm.time(&quot;data&quot;):
+        data = load_data()
+
+    with tm.time(&quot;forward&quot;):
+        output = model(data)
+
+    with tm.time(&quot;backward&quot;):
+        loss.backward()
+
+# 打印统计
+tm.print_summary()
+</code></pre>
+
+<h2 id="api">API 快速参考</h2>
+<h3 id="_11">设备管理</h3>
+<pre class="codehilite"><code class="language-python">get_training_device()      # 获取训练设备 (CUDA)
+get_inference_device()     # 获取推理设备 (CUDA/MPS/CPU)
+setup_distributed()        # 初始化分布式
+get_rank()                 # 获取进程 rank
+is_main_process()          # 判断是否主进程
+</code></pre>
+
+<h3 id="_12">日志</h3>
+<pre class="codehilite"><code class="language-python">create_logger(path, name)  # 创建日志记录器
+logger.log_scalar()        # 记录标量
+logger.log_image()         # 记录图像
+MetricTracker()            # 指标跟踪器
+</code></pre>
+
+<h3 id="_13">时间测量</h3>
+<pre class="codehilite"><code class="language-python">Timer                      # 基础计时器
+TimerManager               # 计时器管理器
+timer(name)                # 简单计时上下文
+</code></pre>
+
+<h3 id="_14">随机数</h3>
+<pre class="codehilite"><code class="language-python">set_seed(seed)             # 设置随机种子
+RNGManager(seed)           # RNG 管理器
+</code></pre>
+
+<h3 id="io">I/O</h3>
+<pre class="codehilite"><code class="language-python">save_json(data, path)      # 保存 JSON
+load_json(path)            # 加载 JSON
+save_image(image, path)    # 保存图像
+save_video(frames, path)   # 保存视频
+</code></pre>
+
+<h2 id="_15">依赖项</h2>
+<h3 id="_16">必需依赖</h3>
+<pre class="codehilite"><code>torch&gt;=1.12.0
+numpy&gt;=1.20.0
+tensorboard&gt;=2.10.0
+pillow&gt;=9.0.0
+</code></pre>
+
+<h3 id="_17">可选依赖</h3>
+<pre class="codehilite"><code class="language-bash"># 视频支持
+pip install imageio&gt;=2.20.0
+
+# OpenCV
+pip install opencv-python&gt;=4.5.0
+
+# 更快的 JSON
+pip install orjson&gt;=3.8.0
+</code></pre>
+
+<h2 id="_18">常见问题</h2>
+<h3 id="q">Q: 如何选择设备？</h3>
+<p>A: 使用 <code>get_training_device()</code> 用于训练（仅 CUDA），<code>get_inference_device()</code> 用于推理（CUDA/MPS/CPU）。</p>
+<h3 id="q_1">Q: 如何确保可复现性？</h3>
+<p>A: 使用 <code>set_seed(42)</code> 设置随机种子，并确保数据加载器的确定性。</p>
+<h3 id="q-tensorboard">Q: 如何在 TensorBoard 中查看日志？</h3>
+<p>A: 运行 <code>tensorboard --logdir=logs</code>，在浏览器访问 <code>http://localhost:6006</code>。</p>
+<h3 id="q_2">Q: 如何进行分布式训练？</h3>
+<p>A: 使用 <code>launch_multi_process(num_gpus, func)</code> 启动多进程训练，或参考 <a href="distributed.md">分布式训练文档</a>。</p>
+<h3 id="q_3">Q: 如何处理大文件？</h3>
+<p>A: 使用流式处理，避免一次性加载全部数据到内存。</p>
+<h2 id="_19">更多资源</h2>
+<ul>
+<li><a href="../README.md">主 README</a></li>
+<li><a href="../waleo_utils/">源代码</a></li>
+<li><a href="../tests/">测试用例</a></li>
+</ul>
+<h2 id="_20">贡献</h2>
+<p>欢迎提交 Issue 和 Pull Request！</p>
+<h2 id="_21">许可证</h2>
+<p>Apache License 2.0</p>
+</body>
+</html>

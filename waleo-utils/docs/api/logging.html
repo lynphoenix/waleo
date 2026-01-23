@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>logging.md</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        h3 { font-size: 1.25em; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        table th {
+            background: #f4f4f4;
+            font-weight: 600;
+        }
+        blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 16px;
+            color: #666;
+            margin: 20px 0;
+        }
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+<h1 id="api">日志模块 API</h1>
+<h2 id="_1">函数</h2>
+<h3 id="create_logger">create_logger</h3>
+<pre class="codehilite"><code class="language-python">def create_logger(
+    log_dir: Union[str, Path],
+    name: str = &quot;waleo&quot;,
+    comment: str = &quot;&quot;
+) -&gt; TBLogger
+</code></pre>
+
+<p>创建日志记录器。</p>
+<p><strong>参数</strong>：
+- <code>log_dir</code> - 基础日志目录
+- <code>name</code> - 日志名称
+- <code>comment</code> - 日志目录后缀注释</p>
+<p><strong>返回</strong>：<code>TBLogger</code></p>
+<h2 id="_2">类</h2>
+<h3 id="tblogger">TBLogger</h3>
+<pre class="codehilite"><code class="language-python">class TBLogger:
+    def __init__(
+        self,
+        log_dir: Union[str, Path],
+        comment: str = &quot;&quot;,
+        flush_secs: int = 120,
+    )
+</code></pre>
+
+<p>TensorBoard 日志记录器。</p>
+<h4 id="_3">方法</h4>
+<h5 id="log_scalar">log_scalar</h5>
+<pre class="codehilite"><code class="language-python">def log_scalar(
+    self,
+    tag: str,
+    value: float,
+    step: Optional[int] = None,
+) -&gt; None
+</code></pre>
+
+<p>记录标量。</p>
+<h5 id="log_scalars">log_scalars</h5>
+<pre class="codehilite"><code class="language-python">def log_scalars(
+    self,
+    main_tag: str,
+    tag_scalar_dict: Dict[str, float],
+    step: Optional[int] = None,
+) -&gt; None
+</code></pre>
+
+<p>记录多个标量。</p>
+<h5 id="log_image">log_image</h5>
+<pre class="codehilite"><code class="language-python">def log_image(
+    self,
+    tag: str,
+    image: Union[np.ndarray, torch.Tensor],
+    step: Optional[int] = None,
+    dataformats: str = &quot;CHW&quot;,
+) -&gt; None
+</code></pre>
+
+<p>记录图像。</p>
+<h5 id="log_images">log_images</h5>
+<pre class="codehilite"><code class="language-python">def log_images(
+    self,
+    tag: str,
+    images: Union[np.ndarray, torch.Tensor],
+    step: Optional[int] = None,
+    dataformats: str = &quot;NCHW&quot;,
+) -&gt; None
+</code></pre>
+
+<p>记录多张图像。</p>
+<h5 id="log_histogram">log_histogram</h5>
+<pre class="codehilite"><code class="language-python">def log_histogram(
+    self,
+    tag: str,
+    values: Union[np.ndarray, torch.Tensor],
+    step: Optional[int] = None,
+) -&gt; None
+</code></pre>
+
+<p>记录直方图。</p>
+<h5 id="log_graph">log_graph</h5>
+<pre class="codehilite"><code class="language-python">def log_graph(
+    self,
+    model: torch.nn.Module,
+    input_to_model: Union[torch.Tensor, tuple],
+) -&gt; None
+</code></pre>
+
+<p>记录模型计算图。</p>
+<h5 id="log_hparams">log_hparams</h5>
+<pre class="codehilite"><code class="language-python">def log_hparams(
+    self,
+    hparam_dict: Dict[str, Any],
+    metric_dict: Dict[str, float],
+) -&gt; None
+</code></pre>
+
+<p>记录超参数和指标。</p>
+<h5 id="log_video">log_video</h5>
+<pre class="codehilite"><code class="language-python">def log_video(
+    self,
+    tag: str,
+    video: Union[np.ndarray, torch.Tensor],
+    step: Optional[int] = None,
+    fps: int = 4,
+) -&gt; None
+</code></pre>
+
+<p>记录视频。</p>
+<h5 id="increment_step">increment_step</h5>
+<pre class="codehilite"><code class="language-python">def increment_step(self) -&gt; None
+</code></pre>
+
+<p>增加内部步数计数器。</p>
+<h5 id="flush">flush</h5>
+<pre class="codehilite"><code class="language-python">def flush(self) -&gt; None
+</code></pre>
+
+<p>刷新日志到磁盘。</p>
+<h5 id="close">close</h5>
+<pre class="codehilite"><code class="language-python">def close(self) -&gt; None
+</code></pre>
+
+<p>关闭日志记录器。</p>
+<hr />
+<h3 id="metrictracker">MetricTracker</h3>
+<pre class="codehilite"><code class="language-python">class MetricTracker:
+    def __init__(
+        self,
+        logger: Optional[TBLogger] = None,
+        window_size: int = 100,
+    )
+</code></pre>
+
+<p>指标跟踪器。</p>
+<h4 id="_4">方法</h4>
+<h5 id="update">update</h5>
+<pre class="codehilite"><code class="language-python">def update(self, name: str, value: Union[float, int, torch.Tensor, np.ndarray]) -&gt; None
+</code></pre>
+
+<p>更新指标。</p>
+<h5 id="get_average">get_average</h5>
+<pre class="codehilite"><code class="language-python">def get_average(self, name: str, window: Optional[int] = None) -&gt; float
+</code></pre>
+
+<p>获取平均值。</p>
+<h5 id="get_std">get_std</h5>
+<pre class="codehilite"><code class="language-python">def get_std(self, name: str, window: Optional[int] = None) -&gt; float
+</code></pre>
+
+<p>获取标准差。</p>
+<h5 id="get_min">get_min</h5>
+<pre class="codehilite"><code class="language-python">def get_min(self, name: str) -&gt; float
+</code></pre>
+
+<p>获取最小值。</p>
+<h5 id="get_max">get_max</h5>
+<pre class="codehilite"><code class="language-python">def get_max(self, name: str) -&gt; float
+</code></pre>
+
+<p>获取最大值。</p>
+<h5 id="get_latest">get_latest</h5>
+<pre class="codehilite"><code class="language-python">def get_latest(self, name: str) -&gt; Optional[float]
+</code></pre>
+
+<p>获取最新值。</p>
+<h5 id="get_summary">get_summary</h5>
+<pre class="codehilite"><code class="language-python">def get_summary(self) -&gt; Dict[str, Dict[str, float]]
+</code></pre>
+
+<p>获取所有指标的摘要统计。</p>
+<h5 id="reset">reset</h5>
+<pre class="codehilite"><code class="language-python">def reset(self, name: Optional[str] = None) -&gt; None
+</code></pre>
+
+<p>重置指标。</p>
+<hr />
+<h3 id="averagemeter">AverageMeter</h3>
+<pre class="codehilite"><code class="language-python">class AverageMeter:
+    def __init__(self, name: str = &quot;&quot;, fmt: str = &quot;:f&quot;)
+</code></pre>
+
+<p>平均值计量器。</p>
+<h4 id="_5">方法</h4>
+<h5 id="update_1">update</h5>
+<pre class="codehilite"><code class="language-python">def update(self, val: float, n: int = 1) -&gt; None
+</code></pre>
+
+<p>更新计量器。</p>
+<h5 id="reset_1">reset</h5>
+<pre class="codehilite"><code class="language-python">def reset(self) -&gt; None
+</code></pre>
+
+<p>重置计量器。</p>
+<h4 id="_6">属性</h4>
+<ul>
+<li><code>avg</code> - 平均值</li>
+<li><code>sum</code> - 总和</li>
+<li><code>count</code> - 计数</li>
+</ul>
+<hr />
+<h3 id="progressmeter">ProgressMeter</h3>
+<pre class="codehilite"><code class="language-python">class ProgressMeter:
+    def __init__(
+        self,
+        num_batches: int,
+        meters: List[AverageMeter],
+        prefix: str = &quot;&quot;,
+    )
+</code></pre>
+
+<p>进度计量器。</p>
+<h4 id="_7">方法</h4>
+<h5 id="display">display</h5>
+<pre class="codehilite"><code class="language-python">def display(self, batch: int) -&gt; str
+</code></pre>
+
+<p>显示进度。</p>
+</body>
+</html>

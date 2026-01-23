@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "waleo-sim"
+version = "0.1.0"
+description = "Waleo 仿真基类模块 - 提供统一的仿真环境接口"
+authors = ["Waleo Team"]
+readme = "README.md"
+packages = [{include = "waleo_sim"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.23.0"
+
+# 仿真后端（可选）
+mujoco = {version = ">=3.0.0", optional = true}
+pybullet = {version = ">=3.2.0", optional = true}
+maniskill2-api = {version = "*", optional = true}
+sapien = {version = "*", optional = true}
+isaacgym = {version = "*", optional = true}
+
+[tool.poetry.extras]
+mujoco = ["mujoco"]
+pybullet = ["pybullet"]
+maniskill = ["maniskill2-api", "sapien"]
+isaacgym = ["isaacgym"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

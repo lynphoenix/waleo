@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M01-基础设施模块设计.md</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        h3 { font-size: 1.25em; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        table th {
+            background: #f4f4f4;
+            font-weight: 600;
+        }
+        blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 16px;
+            color: #666;
+            margin: 20px 0;
+        }
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+<h1 id="m01-waleo-utils">M01: 基础设施模块 (waleo-utils) 设计文档</h1>
+<blockquote>
+<p><strong>优先级</strong>: P0 (核心基础)
+<strong>依赖</strong>: 无
+<strong>状态</strong>: 设计中</p>
+</blockquote>
+<hr />
+<h2 id="1">1. 模块概述</h2>
+<p><strong>模块名称</strong>: <code>waleo-utils</code>
+<strong>版本</strong>: v0.1.0
+<strong>描述</strong>: 提供机器人学习框架所需的基础工具函数和常量定义，是所有其他模块的依赖基础。</p>
+<hr />
+<h2 id="2">2. 模块职责</h2>
+<h3 id="21">2.1 核心职责</h3>
+<ul>
+<li><strong>设备分层管理</strong>：训练设备（CUDA+NCCL） vs 推理设备（CUDA/MPS/CPU）</li>
+<li><strong>分布式训练支持</strong>：NCCL 单机多卡/多机多卡通信、进程组初始化</li>
+<li><strong>通信基础设施</strong>：RPC 通信框架、序列化工具、客户端/服务端基类</li>
+<li><strong>日志记录</strong>：格式化输出、文件日志、分布式日志</li>
+<li><strong>随机数管理</strong>：种子设置、状态保存/恢复、分布式随机数同步</li>
+<li><strong>时间测量</strong>：性能计时器、同步点测量</li>
+<li><strong>文件 I/O</strong>：视频保存、JSON 序列化</li>
+<li><strong>常量定义</strong>：路径、键名、环境变量</li>
+</ul>
+<h3 id="22">2.2 非职责</h3>
+<ul>
+<li>不涉及任何深度学习模型逻辑</li>
+<li>不涉及机器人硬件控制细节</li>
+<li>不涉及数据处理（属于 M03 数据集模块）</li>
+<li>不涉及分布式训练的具体训练循环（属于 M13 训练模块）</li>
+<li>不涉及具体的通信协议实现（属于 M21 通信服务模块）</li>
+</ul>
+<hr />
+<h2 id="3">3. 子模块结构</h2>
+<pre class="codehilite"><code>waleo-utils/
+├── waleo_utils/
+│   ├── __init__.py
+│   ├── device/                  # 设备管理
+│   │   ├── __init__.py
+│   │   ├── manager.py           # 设备选择和管理
+│   │   └── distributed.py       # 分布式设备（NCCL，支持多机多卡）
+│   ├── distributed/             # 分布式训练支持
+│   │   ├── __init__.py
+│   │   ├── launcher.py          # 多进程启动
+│   │   ├── reducer.py           # 梯度同步
+│   │   └── state.py             # 分布式状态管理
+│   ├── communication/           # 通信基础设施
+│   │   ├── __init__.py
+│   │   ├── base.py              # RPC 基类
+│   │   ├── client.py            # 客户端基类
+│   │   ├── server.py            # 服务端基类
+│   │   ├── serialization.py     # 序列化工具
+│   │   └── protocol.py          # 协议定义
+│   ├── logging/                 # 日志记录
+│   │   ├── __init__.py
+│   │   ├── formatter.py         # 格式化器
+│   │   └── metrics.py           # 指标追踪
+│   ├── random/                  # 随机数管理
+│   │   ├── __init__.py
+│   │   └── state.py             # RNG 状态管理
+│   ├── timing/                  # 时间测量
+│   │   ├── __init__.py
+│   │   └── timer.py             # 计时器
+│   ├── io/                      # 文件I/O
+│   │   ├── __init__.py
+│   │   ├── video.py             # 视频保存
+│   │   └── json.py              # JSON 序列化
+│   └── constants.py              # 常量定义
+├── tests/
+│   ├── test_device.py
+│   ├── test_distributed.py
+│   ├── test_communication.py
+│   ├── test_logging.py
+│   ├── test_random.py
+│   ├── test_timing.py
+│   └── test_io.py
+├── pyproject.toml
+└── README.md
+</code></pre>
+
+<hr />
+<h2 id="4-api">4. API 设计</h2>
+<h3 id="41-device">4.1 设备管理 (<code>device/</code>)</h3>
+<h4 id="411-managerpy">4.1.1 基础设备管理 (<code>manager.py</code>)</h4>
+<p><strong>设计理念</strong>：根据使用场景分层选择设备</p>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_training_device()</code></td>
+<td>无</td>
+<td><code>torch.device</code></td>
+<td>获取训练设备（仅 CUDA）</td>
+</tr>
+<tr>
+<td><code>get_inference_device()</code></td>
+<td>无</td>
+<td><code>torch.device</code></td>
+<td>获取推理设备（CUDA &gt; MPS &gt; CPU）</td>
+</tr>
+<tr>
+<td><code>get_device(device_str)</code></td>
+<td><code>str</code></td>
+<td><code>torch.device</code></td>
+<td>根据字符串获取设备</td>
+</tr>
+<tr>
+<td><code>is_device_available(device_str)</code></td>
+<td><code>str</code></td>
+<td><code>bool</code></td>
+<td>检查设备是否可用</td>
+</tr>
+<tr>
+<td><code>get_device_count(device_type)</code></td>
+<td><code>str</code></td>
+<td><code>int</code></td>
+<td>获取指定类型的设备数量</td>
+</tr>
+<tr>
+<td><code>get_device_capabilities()</code></td>
+<td>无</td>
+<td><code>dict</code></td>
+<td>获取设备能力信息</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_1">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_utils.device import get_training_device, get_inference_device, get_device_capabilities
+
+# 训练：只使用 CUDA
+train_device = get_training_device()  # cuda:0 或抛出异常
+
+# 推理：可以使用任何设备
+infer_device = get_inference_device()  # cuda/mps/cpu
+
+# 获取设备能力
+caps = get_device_capabilities()
+# {
+#     'cuda': {'available': True, 'count': 4, 'nccl': True},
+#     'mps': {'available': True, 'count': 1, 'nccl': False},
+#     'cpu': {'available': True}
+# }
+</code></pre>
+
+<h4 id="412-distributedpy">4.1.2 分布式设备 (<code>distributed.py</code>)</h4>
+<p><strong>设计理念</strong>：支持单机多卡和多机多卡，使用统一接口</p>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>setup_distributed(backend="nccl")</code></td>
+<td><code>str</code></td>
+<td>无</td>
+<td>初始化分布式环境</td>
+</tr>
+<tr>
+<td><code>setup_distributed_multinode(init_method, world_size, rank)</code></td>
+<td><code>str, int, int</code></td>
+<td>无</td>
+<td>初始化多机分布式</td>
+</tr>
+<tr>
+<td><code>get_world_size()</code></td>
+<td>无</td>
+<td><code>int</code></td>
+<td>获取进程总数</td>
+</tr>
+<tr>
+<td><code>get_rank()</code></td>
+<td>无</td>
+<td><code>int</code></td>
+<td>获取当前进程 rank</td>
+</tr>
+<tr>
+<td><code>get_local_rank()</code></td>
+<td>无</td>
+<td><code>int</code></td>
+<td>获取本地进程 rank</td>
+</tr>
+<tr>
+<td><code>is_main_process()</code></td>
+<td>无</td>
+<td><code>bool</code></td>
+<td>是否为主进程</td>
+</tr>
+<tr>
+<td><code>barrier()</code></td>
+<td>无</td>
+<td>无</td>
+<td>同步所有进程</td>
+</tr>
+<tr>
+<td><code>destroy_distributed()</code></td>
+<td>无</td>
+<td>无</td>
+<td>清理分布式环境</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_2">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_utils.device import setup_distributed, get_rank, get_world_size
+
+# 单机多卡（自动检测）
+setup_distributed(backend=&quot;nccl&quot;)
+
+# 多机多卡（手动指定）
+# Node 0:
+setup_distributed_multinode(
+    init_method=&quot;tcp://192.168.1.1:12345&quot;,
+    world_size=8,  # 2 nodes × 4 GPUs
+    rank=0
+)
+
+# Node 1:
+setup_distributed_multinode(
+    init_method=&quot;tcp://192.168.1.1:12345&quot;,
+    world_size=8,
+    rank=4  # offset by node 0's GPUs
+)
+
+rank = get_rank()
+world_size = get_world_size()
+device = torch.device(f&quot;cuda:{get_local_rank()}&quot;)
+</code></pre>
+
+<h4 id="_3">依赖</h4>
+<ul>
+<li><code>torch</code></li>
+<li><code>torch.distributed</code></li>
+<li>无其他 waleo 模块依赖</li>
+</ul>
+<hr />
+<h3 id="42-distributed">4.2 分布式训练支持 (<code>distributed/</code>)</h3>
+<h4 id="421-launcherpy">4.2.1 多进程启动 (<code>launcher.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>launch_multi_process(num_gpus, func, args)</code></td>
+<td><code>int, callable, tuple</code></td>
+<td>无</td>
+<td>启动多进程训练</td>
+</tr>
+<tr>
+<td><code>launch_multinode(nodes_config, func, args)</code></td>
+<td><code>list[dict], callable, tuple</code></td>
+<td>无</td>
+<td>启动多机多卡训练</td>
+</tr>
+<tr>
+<td><code>run_main(rank, world_size, func, args)</code></td>
+<td><code>int, int, callable, tuple</code></td>
+<td>无</td>
+<td>单进程主函数</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_4">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_utils.distributed import launch_multi_process, launch_multinode
+
+def train_worker(rank, world_size, config):
+    &quot;&quot;&quot;每个进程的训练函数&quot;&quot;&quot;
+    setup_distributed()
+    device = torch.device(f&quot;cuda:{rank}&quot;)
+    model = MyModel().to(device)
+    model = torch.nn.parallel.DistributedDataParallel(
+        model, device_ids=[rank]
+    )
+    # 训练...
+
+# 单机多卡
+launch_multi_process(num_gpus=4, func=train_worker, args=(config,))
+
+# 多机多卡
+nodes_config = [
+    {&quot;host&quot;: &quot;node0&quot;, &quot;num_gpus&quot;: 4},
+    {&quot;host&quot;: &quot;node1&quot;, &quot;num_gpus&quot;: 4},
+]
+launch_multinode(nodes_config, func=train_worker, args=(config,))
+</code></pre>
+
+<h4 id="422-reducerpy">4.2.2 梯度同步 (<code>reducer.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>all_reduce(tensor, op="avg")</code></td>
+<td><code>tensor, str</code></td>
+<td><code>tensor</code></td>
+<td>跨进程归约张量</td>
+</tr>
+<tr>
+<td><code>broadcast(tensor, src=0)</code></td>
+<td><code>tensor, int</code></td>
+<td><code>tensor</code></td>
+<td>从主进程广播张量</td>
+</tr>
+<tr>
+<td><code>all_gather(tensors)</code></td>
+<td><code>list[tensor]</code></td>
+<td><code>list[tensor]</code></td>
+<td>收集所有进程的张量</td>
+</tr>
+</tbody>
+</table>
+<h4 id="423-statepy">4.2.3 分布式状态 (<code>state.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>类名</th>
+<th>方法</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DistributedState</code></td>
+<td><code>__init__()</code></td>
+<td>管理分布式状态</td>
+</tr>
+<tr>
+<td></td>
+<td><code>@property rank</code></td>
+<td>当前 rank</td>
+</tr>
+<tr>
+<td></td>
+<td><code>@property world_size</code></td>
+<td>总进程数</td>
+</tr>
+<tr>
+<td></td>
+<td><code>@property local_rank</code></td>
+<td>本地 rank</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_5">依赖</h4>
+<ul>
+<li><code>torch</code></li>
+<li><code>torch.distributed</code></li>
+<li><code>torch.multiprocessing</code></li>
+<li><code>waleo-utils.device</code> (M01)</li>
+</ul>
+<hr />
+<h3 id="43-communication">4.3 通信基础设施 (<code>communication/</code>) ← 新增</h3>
+<p><strong>设计理念</strong>：提供通用的 RPC 通信框架，支持远程服务调用</p>
+<h4 id="431-rpc-basepy">4.3.1 RPC 基类 (<code>base.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>类名</th>
+<th>方法</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RPCEndpoint</code></td>
+<td><code>__init__(host, port)</code></td>
+<td>RPC 端点基类</td>
+</tr>
+<tr>
+<td></td>
+<td><code>start()</code></td>
+<td>启动服务</td>
+</tr>
+<tr>
+<td></td>
+<td><code>stop()</code></td>
+<td>停止服务</td>
+</tr>
+<tr>
+<td></td>
+<td><code>is_running()</code></td>
+<td>检查运行状态</td>
+</tr>
+</tbody>
+</table>
+<h4 id="432-clientpy">4.3.2 客户端基类 (<code>client.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class RPCClient:
+    &quot;&quot;&quot;RPC 客户端基类
+
+    提供同步/异步远程调用能力
+    &quot;&quot;&quot;
+
+    def __init__(self, host: str, port: int, timeout: float = 5.0):
+        &quot;&quot;&quot;
+        Args:
+            host: 服务端地址
+            port: 服务端端口
+            timeout: 超时时间
+        &quot;&quot;&quot;
+        ...
+
+    def connect(self) -&gt; bool:
+        &quot;&quot;&quot;连接到服务端&quot;&quot;&quot;
+        ...
+
+    def disconnect(self) -&gt; None:
+        &quot;&quot;&quot;断开连接&quot;&quot;&quot;
+        ...
+
+    def is_connected(self) -&gt; bool:
+        &quot;&quot;&quot;检查连接状态&quot;&quot;&quot;
+        ...
+
+    def call(self, method: str, *args, **kwargs) -&gt; Any:
+        &quot;&quot;&quot;同步调用远程方法&quot;&quot;&quot;
+        ...
+
+    async def call_async(self, method: str, *args, **kwargs) -&gt; Any:
+        &quot;&quot;&quot;异步调用远程方法&quot;&quot;&quot;
+        ...
+
+    def call_stream(self, method: str, *args, **kwargs) -&gt; Iterator:
+        &quot;&quot;&quot;流式调用（返回迭代器）&quot;&quot;&quot;
+        ...
+</code></pre>
+
+<h4 id="433-serverpy">4.3.3 服务端基类 (<code>server.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class RPCServer:
+    &quot;&quot;&quot;RPC 服务端基类
+
+    提供远程方法注册和调用
+    &quot;&quot;&quot;
+
+    def __init__(self, host: str = &quot;0.0.0.0&quot;, port: int = 5000, max_workers: int = 4):
+        &quot;&quot;&quot;
+        Args:
+            host: 绑定地址
+            port: 绑定端口
+            max_workers: 最大工作线程数
+        &quot;&quot;&quot;
+        ...
+
+    def register_method(self, name: str, func: callable):
+        &quot;&quot;&quot;注册可远程调用的方法&quot;&quot;&quot;
+        ...
+
+    def start(self, block: bool = True):
+        &quot;&quot;&quot;启动服务&quot;&quot;&quot;
+        ...
+
+    def stop(self):
+        &quot;&quot;&quot;停止服务&quot;&quot;&quot;
+        ...
+
+    def is_running(self) -&gt; bool:
+        &quot;&quot;&quot;检查运行状态&quot;&quot;&quot;
+        ...
+</code></pre>
+
+<h4 id="434-serializationpy">4.3.4 序列化工具 (<code>serialization.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>serialize(obj)</code></td>
+<td><code>Any</code></td>
+<td><code>bytes</code></td>
+<td>序列化对象（支持 tensor、numpy 等）</td>
+</tr>
+<tr>
+<td><code>deserialize(data)</code></td>
+<td><code>bytes</code></td>
+<td><code>Any</code></td>
+<td>反序列化对象</td>
+</tr>
+<tr>
+<td><code>serialize_tensor(tensor)</code></td>
+<td><code>torch.Tensor</code></td>
+<td><code>bytes</code></td>
+<td>序列化张量</td>
+</tr>
+<tr>
+<td><code>deserialize_tensor(data)</code></td>
+<td><code>bytes</code></td>
+<td><code>torch.Tensor</code></td>
+<td>反序列化张量</td>
+</tr>
+</tbody>
+</table>
+<h4 id="435-protocolpy">4.3.5 协议定义 (<code>protocol.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">from enum import Enum
+
+class MessageType(Enum):
+    &quot;&quot;&quot;消息类型&quot;&quot;&quot;
+    REQUEST = &quot;request&quot;
+    RESPONSE = &quot;response&quot;
+    STREAM_START = &quot;stream_start&quot;
+    STREAM_CHUNK = &quot;stream_chunk&quot;
+    STREAM_END = &quot;stream_end&quot;
+    ERROR = &quot;error&quot;
+
+class ErrorCode(Enum):
+    &quot;&quot;&quot;错误码&quot;&quot;&quot;
+    OK = 0
+    NOT_FOUND = 1
+    INVALID_REQUEST = 2
+    INTERNAL_ERROR = 3
+    TIMEOUT = 4
+
+@dataclass
+class RPCMessage:
+    &quot;&quot;&quot;RPC 消息格式&quot;&quot;&quot;
+    msg_type: MessageType
+    msg_id: str
+    method: str | None = None
+    args: tuple | None = None
+    kwargs: dict | None = None
+    result: Any | None = None
+    error: ErrorCode | None = None
+    error_msg: str | None = None
+</code></pre>
+
+<h4 id="_6">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_utils.communication import RPCClient, RPCServer, serialize, deserialize
+
+# 服务端
+class MyService(RPCServer):
+    def __init__(self):
+        super().__init__(host=&quot;0.0.0.0&quot;, port=5000)
+        self.register_method(&quot;predict&quot;, self.predict)
+        self.register_method(&quot;process_stream&quot;, self.process_stream)
+
+    def predict(self, inputs: dict) -&gt; dict:
+        &quot;&quot;&quot;推理方法&quot;&quot;&quot;
+        # 处理输入并返回结果
+        return {&quot;action&quot;: [0.1, 0.2, 0.3]}
+
+    def process_stream(self, inputs: dict):
+        &quot;&quot;&quot;流式处理&quot;&quot;&quot;
+        for i in range(10):
+            yield {&quot;step&quot;: i, &quot;value&quot;: i * 0.1}
+
+# 启动服务
+service = MyService()
+service.start()
+
+# 客户端
+client = RPCClient(host=&quot;localhost&quot;, port=5000)
+client.connect()
+
+# 同步调用
+result = client.call(&quot;predict&quot;, inputs={&quot;obs&quot;: [...]})
+print(result)  # {&quot;action&quot;: [0.1, 0.2, 0.3]}
+
+# 异步调用
+result = await client.call_async(&quot;predict&quot;, inputs={&quot;obs&quot;: [...]})
+
+# 流式调用
+for chunk in client.call_stream(&quot;process_stream&quot;, inputs={&quot;data&quot;: [...]}):
+    print(chunk)  # {&quot;step&quot;: 0, &quot;value&quot;: 0.0}, {&quot;step&quot;: 1, &quot;value&quot;: 0.1}, ...
+</code></pre>
+
+<h4 id="_7">依赖</h4>
+<ul>
+<li><code>asyncio</code> (标准库)</li>
+<li><code>socket</code> (标准库)</li>
+<li><code>pickle</code> (标准库)</li>
+<li><code>torch</code> (张量序列化)</li>
+<li><code>numpy</code> (数组序列化)</li>
+</ul>
+<hr />
+<h3 id="44-logging">4.4 日志记录 (<code>logging/</code>)</h3>
+<h4 id="441-formatterpy">4.4.1 格式化器 (<code>formatter.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>init_logging(log_file=None, level="INFO")</code></td>
+<td><code>Path, str</code></td>
+<td>无</td>
+<td>初始化日志系统</td>
+</tr>
+<tr>
+<td><code>get_logger(name)</code></td>
+<td><code>str</code></td>
+<td><code>Logger</code></td>
+<td>获取命名日志记录器</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_8">日志格式</h4>
+<pre class="codehilite"><code>INFO 2026-01-08 15:30:45    manager.py:120 Device cuda is selected
+</code></pre>
+
+<h4 id="452-metricspy">4.5.2 指标追踪 (<code>metrics.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>类名</th>
+<th>方法</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AverageMeter</code></td>
+<td><code>update(val, n=1)</code></td>
+<td>更新平均值</td>
+</tr>
+<tr>
+<td></td>
+<td><code>reset()</code></td>
+<td>重置</td>
+</tr>
+<tr>
+<td></td>
+<td><code>@property avg</code></td>
+<td>获取平均值</td>
+</tr>
+<tr>
+<td></td>
+<td><code>@property sum</code></td>
+<td>获取总和</td>
+</tr>
+<tr>
+<td><code>MetricsTracker</code></td>
+<td><code>step()</code></td>
+<td>增加步数</td>
+</tr>
+<tr>
+<td></td>
+<td><code>to_dict()</code></td>
+<td>导出为字典</td>
+</tr>
+<tr>
+<td></td>
+<td><code>reset_averages()</code></td>
+<td>重置平均值</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="45-randomstatepy">4.5 随机数管理 (<code>random/state.py</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>set_seed(seed)</code></td>
+<td><code>int</code></td>
+<td>无</td>
+<td>设置 random、numpy、torch 的随机种子</td>
+</tr>
+<tr>
+<td><code>get_rng_state()</code></td>
+<td>无</td>
+<td><code>dict</code></td>
+<td>获取所有 RNG 状态</td>
+</tr>
+<tr>
+<td><code>set_rng_state(state_dict)</code></td>
+<td><code>dict</code></td>
+<td>无</td>
+<td>恢复所有 RNG 状态</td>
+</tr>
+<tr>
+<td><code>save_rng_state(save_dir)</code></td>
+<td><code>Path</code></td>
+<td>无</td>
+<td>保存 RNG 状态到文件</td>
+</tr>
+<tr>
+<td><code>load_rng_state(save_dir)</code></td>
+<td><code>Path</code></td>
+<td>无</td>
+<td>从文件加载 RNG 状态</td>
+</tr>
+<tr>
+<td><code>seeded_context(seed)</code></td>
+<td><code>int</code></td>
+<td>Context Manager</td>
+<td>临时设置种子的上下文管理器</td>
+</tr>
+<tr>
+<td><code>sync_seed_across_processes(seed)</code></td>
+<td><code>int</code></td>
+<td>无</td>
+<td>在分布式环境中同步种子</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="46-timingtimerpy">4.6 时间测量 (<code>timing/timer.py</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>类名</th>
+<th>方法/属性</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TimerManager</code></td>
+<td><code>__enter__()</code> / <code>__exit__()</code></td>
+<td>上下文管理器支持</td>
+</tr>
+<tr>
+<td></td>
+<td><code>start()</code> / <code>stop()</code></td>
+<td>手动控制</td>
+</tr>
+<tr>
+<td></td>
+<td><code>@property last</code></td>
+<td>最后一次耗时（秒）</td>
+</tr>
+<tr>
+<td></td>
+<td><code>@property avg</code></td>
+<td>平均耗时</td>
+</tr>
+<tr>
+<td></td>
+<td><code>@property fps_last</code></td>
+<td>最后一次 FPS</td>
+</tr>
+<tr>
+<td></td>
+<td><code>@property fps_avg</code></td>
+<td>平均 FPS</td>
+</tr>
+<tr>
+<td></td>
+<td><code>percentile(p)</code></td>
+<td>第 p 百分位耗时</td>
+</tr>
+<tr>
+<td></td>
+<td><code>reset()</code></td>
+<td>清空历史</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="47-io-io">4.7 文件 I/O (<code>io/</code>)</h3>
+<h4 id="471-videopy">4.7.1 视频保存 (<code>video.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>write_video(path, frames, fps)</code></td>
+<td><code>Path, ndarray, int</code></td>
+<td>无</td>
+<td>保存图像序列为 MP4 视频</td>
+</tr>
+</tbody>
+</table>
+<h4 id="472-json-jsonpy">4.7.2 JSON 序列化 (<code>json.py</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deserialize_json_into_object(path, obj)</code></td>
+<td><code>Path, T</code></td>
+<td><code>T</code></td>
+<td>从 JSON 文件加载并填充对象</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="48-constantspy">4.8 常量定义 (<code>constants.py</code>)</h3>
+<pre class="codehilite"><code class="language-python"># ============================================================================
+# 观察和动作键名
+# ============================================================================
+OBS_ENV_STATE = &quot;observation.environment_state&quot;
+OBS_STATE = &quot;observation.state&quot;
+OBS_IMAGE = &quot;observation.image&quot;
+OBS_IMAGES = &quot;observation.images&quot;
+ACTION = &quot;action&quot;
+REWARD = &quot;next.reward&quot;
+
+# ============================================================================
+# 路径常量
+# ============================================================================
+WALES_HOME = Path(&quot;~/.cache/waleo&quot;).expanduser()
+WALES_CALIBRATION = WALES_HOME / &quot;calibration&quot;
+
+# 训练相关
+CHECKPOINTS_DIR = &quot;checkpoints&quot;
+PRETRAINED_MODEL_DIR = &quot;pretrained_model&quot;
+TRAINING_STATE_DIR = &quot;training_state&quot;
+
+# ============================================================================
+# 文件名常量
+# ============================================================================
+RNG_STATE = &quot;rng_state.safetensors&quot;
+TRAINING_STEP = &quot;training_step.json&quot;
+OPTIMIZER_STATE = &quot;optimizer_state.safetensors&quot;
+OPTIMIZER_PARAM_GROUPS = &quot;optimizer_param_groups.json&quot;
+SCHEDULER_STATE = &quot;scheduler_state.json&quot;
+
+# ============================================================================
+# 通信常量
+# ============================================================================
+DEFAULT_RPC_PORT = 5000
+DEFAULT_RPC_TIMEOUT = 5.0
+MAX_MESSAGE_SIZE = 100 * 1024 * 1024  # 100MB
+
+# ============================================================================
+# 仿真常量
+# ============================================================================
+DEFAULT_FPS = 30
+DEFAULT_MAX_EPISODE_STEPS = 1000
+</code></pre>
+
+<hr />
+<h2 id="5">5. 模块接口</h2>
+<h3 id="51-api-__init__py">5.1 公开 API (<code>__init__.py</code>)</h3>
+<pre class="codehilite"><code class="language-python"># 设备管理
+from waleo_utils.device import (
+    get_training_device,
+    get_inference_device,
+    get_device,
+    is_device_available,
+    get_device_count,
+    get_device_capabilities,
+    setup_distributed,
+    setup_distributed_multinode,
+    get_world_size,
+    get_rank,
+    get_local_rank,
+    is_main_process,
+    barrier,
+    destroy_distributed,
+)
+
+# 分布式训练
+from waleo_utils.distributed import (
+    launch_multi_process,
+    launch_multinode,
+    run_main,
+)
+
+# 通信基础设施
+from waleo_utils.communication import (
+    RPCClient,
+    RPCServer,
+    RPCEndpoint,
+    serialize,
+    deserialize,
+    serialize_tensor,
+    deserialize_tensor,
+    MessageType,
+    ErrorCode,
+    RPCMessage,
+)
+
+# 日志记录
+from waleo_utils.logging import (
+    init_logging,
+    get_logger,
+    AverageMeter,
+    MetricsTracker,
+)
+
+# 随机数管理
+from waleo_utils.random import (
+    set_seed,
+    get_rng_state,
+    set_rng_state,
+    save_rng_state,
+    load_rng_state,
+    seeded_context,
+    sync_seed_across_processes,
+)
+
+# 时间测量
+from waleo_utils.timing import TimerManager
+
+# 文件 I/O
+from waleo_utils.io import (
+    write_video,
+    deserialize_json_into_object,
+)
+
+# 常量
+from waleo_utils.constants import (
+    # 观察和动作键名
+    OBS_ENV_STATE,
+    OBS_STATE,
+    OBS_IMAGE,
+    OBS_IMAGES,
+    ACTION,
+    REWARD,
+    # 路径
+    WALES_HOME,
+    WALES_CALIBRATION,
+    CHECKPOINTS_DIR,
+    PRETRAINED_MODEL_DIR,
+    TRAINING_STATE_DIR,
+    # 文件名
+    RNG_STATE,
+    TRAINING_STEP,
+    OPTIMIZER_STATE,
+    OPTIMIZER_PARAM_GROUPS,
+    SCHEDULER_STATE,
+    # 通信
+    DEFAULT_RPC_PORT,
+    DEFAULT_RPC_TIMEOUT,
+    MAX_MESSAGE_SIZE,
+)
+</code></pre>
+
+<hr />
+<h2 id="6">6. 与其他模块的接口</h2>
+<h3 id="61">6.1 依赖关系</h3>
+<table>
+<thead>
+<tr>
+<th>依赖模块</th>
+<th>使用的功能</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M02 配置管理</td>
+<td><code>get_training_device</code>, <code>init_logging</code></td>
+<td>设备选择和日志初始化</td>
+</tr>
+<tr>
+<td>M03 数据集</td>
+<td><code>WALES_HOME</code>, <code>write_video</code></td>
+<td>缓存路径和视频保存</td>
+</tr>
+<tr>
+<td>M04 策略接口</td>
+<td><code>get_training_device</code>, <code>set_seed</code></td>
+<td>设备和可复现性</td>
+</tr>
+<tr>
+<td>M07 电机控制</td>
+<td><code>init_logging</code>, <code>TimerManager</code></td>
+<td>日志和性能测量</td>
+</tr>
+<tr>
+<td>M13 训练脚本</td>
+<td><code>TimerManager</code></td>
+<td>训练速度监控</td>
+</tr>
+<tr>
+<td>M21 通信服务</td>
+<td><code>RPCClient</code>, <code>RPCServer</code></td>
+<td>通信基类</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62">6.2 被依赖关系</h3>
+<table>
+<thead>
+<tr>
+<th>依赖模块</th>
+<th>使用的功能</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M04 策略模块</td>
+<td>分布式训练、通信</td>
+<td>多GPU训练、远程推理</td>
+</tr>
+<tr>
+<td>M13 训练脚本</td>
+<td>设备管理、日志、计时</td>
+<td>训练流程</td>
+</tr>
+<tr>
+<td>M21 通信服务</td>
+<td>RPC 基类</td>
+<td>机器人通信</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7">7. 数据流和架构图</h2>
+<pre class="codehilite"><code>┌─────────────────────────────────────────────────────────────────┐
+│                        应用层                                   │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌──────────┐  │
+│  │ 训练脚本    │  │ 评估脚本    │  │ 仿真训练    │  │ 远程推理  │  │
+│  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘  └────┬─────┘  │
+└────────┼───────────────┼───────────────┼───────────────┼────────┘
+         │               │               │               │
+         ▼               ▼               ▼               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    M01: waleo-utils 核心层                    │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐             │  │
+│  │  │  Device   │  │  Dist.    │  │  Comm.    │             │  │
+│  │  │  Manager  │  │  Training │  │  Base     │             │  │
+│  │  └──────────┘  └──────────┘  └──────────┘             │  │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐             │  │
+│  │  │  Logging │  │  Random   │  │  Timing   │             │  │
+│  │  └──────────┘  └──────────┘  └──────────┘             │  │
+│  │  ┌──────────┐                                           │  │
+│  │  │   I/O     │                                           │  │
+│  │  └──────────┘                                           │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+         │                │                │
+         ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     其他模块（M02-M22）                          │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<hr />
+<h2 id="8">8. 异步推理架构</h2>
+<pre class="codehilite"><code>┌─────────────────────────────────────────────────────────────┐
+│              CUDA 训练/推理服务器                             │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │  分布式训练 (NCCL 单机/多机多卡)                       │    │
+│  │  训练策略模型                                          │    │
+│  │  模型推理服务                                          │    │
+│  └───────────────────┬────────────────────────────────┘    │
+│                      │ 网络提供推理服务                         │
+└──────────────────────┼──────────────────────────────────────┘
+                       │ RPC/TCP
+┌──────────────────────┼──────────────────────────────────────┐
+│                      ▼                                       │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │          机器人本体 (MPS/CPU)                       │    │
+│  │  ┌──────────────────────────────────────────────┐  │    │
+│  │  │ 1. 采集观察数据 (observation)                  │  │    │
+│  │  └────────────┬─────────────────────────────────┘  │    │
+│  │               │                                      │    │
+│  │               ▼                                      │    │
+│  │  ┌──────────────────────────────────────────────┐  │    │
+│  │  │ 2. 发送推理请求 (obs) → 服务器               │  │    │
+│  │  └────────────┬─────────────────────────────────┘  │    │
+│  │               │                                      │    │
+│  │               ▼                                      │    │
+│  │  ┌──────────────────────────────────────────────┐  │    │
+│  │  │ 3. 接收 action chunk ← 服务器                │  │    │
+│  │  └────────────┬─────────────────────────────────┘  │    │
+│  │               │                                      │    │
+│  │               ▼                                      │    │
+│  │  ┌──────────────────────────────────────────────┐  │    │
+│  │  │ 4. 执行 action chunk (future N steps)       │  │    │
+│  │  └──────────────────────────────────────────────┘  │    │
+│  └────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<p><strong>关键点</strong>：
+- 机器人本体只需要 MPS/CPU（低算力）
+- 训练和推理在 CUDA 服务器完成
+- 通过 RPC 通信异步请求推理
+- 机器人本体只负责：采集 → 请求 → 执行</p>
+<hr />
+<h2 id="9">9. 依赖项</h2>
+<h3 id="91">9.1 核心依赖（必需）</h3>
+<pre class="codehilite"><code class="language-toml">[tool.poetry.dependencies]
+python = &quot;^3.9&quot;
+torch = &quot;^2.0.0&quot;
+numpy = &quot;^1.24.0&quot;
+safetensors = &quot;^0.4.0&quot;
+</code></pre>
+
+<h3 id="92">9.2 通信依赖（必需）</h3>
+<pre class="codehilite"><code class="language-toml">aiohttp = &quot;^3.9.0&quot;
+</code></pre>
+
+<h3 id="93">9.3 视频支持依赖（可选）</h3>
+<pre class="codehilite"><code class="language-toml">[tool.poetry.extras]
+video = [&quot;imageio = &quot;^2.31.0&quot;]
+</code></pre>
+
+<h3 id="95">9.5 开发依赖</h3>
+<pre class="codehilite"><code class="language-toml">[tool.poetry.dev-dependencies]
+pytest = &quot;^7.4.0&quot;
+pytest-cov = &quot;^4.1.0&quot;
+pytest-asyncio = &quot;^0.21.0&quot;
+black = &quot;^23.0.0&quot;
+mypy = &quot;^1.5.0&quot;
+</code></pre>
+
+<hr />
+<h2 id="10">10. 兼容性</h2>
+<h3 id="101-python">10.1 Python 版本</h3>
+<ul>
+<li>最低：Python 3.9</li>
+<li>测试：3.9, 3.10, 3.11</li>
+</ul>
+<h3 id="102">10.2 平台支持</h3>
+<ul>
+<li>Linux: ✅ 完全支持（推荐，NCCL 支持）</li>
+<li>macOS: ✅ 支持（MPS 推理，无 NCCL）</li>
+<li>Windows: ⚠️ 部分支持（无 CUDA 设备检测）</li>
+</ul>
+<h3 id="103-pytorch">10.3 PyTorch 版本</h3>
+<ul>
+<li>最低：PyTorch 2.0.0</li>
+<li>推荐：PyTorch 2.1.0+（更好的 NCCL 支持）</li>
+</ul>
+<hr />
+<h2 id="11">11. 文件大小估算</h2>
+<table>
+<thead>
+<tr>
+<th>文件/目录</th>
+<th>估计行数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>device/manager.py</code></td>
+<td>~180</td>
+<td>设备管理（训练/推理分离）</td>
+</tr>
+<tr>
+<td><code>device/distributed.py</code></td>
+<td>~250</td>
+<td>分布式设备（NCCL 多机多卡）</td>
+</tr>
+<tr>
+<td><code>distributed/launcher.py</code></td>
+<td>~180</td>
+<td>多进程/多机启动</td>
+</tr>
+<tr>
+<td><code>distributed/reducer.py</code></td>
+<td>~120</td>
+<td>梯度同步</td>
+</tr>
+<tr>
+<td><code>distributed/state.py</code></td>
+<td>~100</td>
+<td>分布式状态管理</td>
+</tr>
+<tr>
+<td><code>communication/base.py</code></td>
+<td>~80</td>
+<td>RPC 基类</td>
+</tr>
+<tr>
+<td><code>communication/client.py</code></td>
+<td>~200</td>
+<td>RPC 客户端</td>
+</tr>
+<tr>
+<td><code>communication/server.py</code></td>
+<td>~250</td>
+<td>RPC 服务端</td>
+</tr>
+<tr>
+<td><code>communication/serialization.py</code></td>
+<td>~150</td>
+<td>序列化工具</td>
+</tr>
+<tr>
+<td><code>communication/protocol.py</code></td>
+<td>~100</td>
+<td>协议定义</td>
+</tr>
+<tr>
+<td><code>logging/formatter.py</code></td>
+<td>~80</td>
+<td>日志格式化</td>
+</tr>
+<tr>
+<td><code>logging/metrics.py</code></td>
+<td>~160</td>
+<td>指标追踪</td>
+</tr>
+<tr>
+<td><code>random/state.py</code></td>
+<td>~240</td>
+<td>RNG 状态管理（含分布式同步）</td>
+</tr>
+<tr>
+<td><code>timing/timer.py</code></td>
+<td>~100</td>
+<td>计时器</td>
+</tr>
+<tr>
+<td><code>io/video.py</code></td>
+<td>~30</td>
+<td>视频保存</td>
+</tr>
+<tr>
+<td><code>io/json.py</code></td>
+<td>~110</td>
+<td>JSON 序列化</td>
+</tr>
+<tr>
+<td><code>constants.py</code></td>
+<td>~90</td>
+<td>常量定义</td>
+</tr>
+<tr>
+<td><code>__init__.py</code></td>
+<td>~80</td>
+<td>导出接口</td>
+</tr>
+<tr>
+<td><strong>总计</strong></td>
+<td><strong>~2460</strong></td>
+<td>不含测试</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12">12. 实现优先级</h2>
+<h3 id="phase-1-">Phase 1: 核心功能（必须）- 基础设施</h3>
+<ol>
+<li><code>device/manager.py</code> - 设备管理（训练/推理分离）</li>
+<li><code>device/distributed.py</code> - 分布式设备（NCCL 多机多卡）</li>
+<li><code>constants.py</code> - 常量定义</li>
+<li><code>timing/timer.py</code> - 时间测量</li>
+</ol>
+<h3 id="phase-2-cuda">Phase 2: 分布式训练（必须）- CUDA 多卡/多机训练</h3>
+<ol>
+<li><code>distributed/launcher.py</code> - 多进程/多机启动</li>
+<li><code>distributed/reducer.py</code> - 梯度同步</li>
+<li><code>distributed/state.py</code> - 分布式状态管理</li>
+<li><code>random/state.py</code> - RNG 管理（含分布式同步）</li>
+</ol>
+<h3 id="phase-3-">Phase 3: 通信基础设施（必须）- 远程推理基础</h3>
+<ol>
+<li><code>communication/base.py</code> - RPC 基类</li>
+<li><code>communication/client.py</code> - 客户端基类</li>
+<li><code>communication/server.py</code> - 服务端基类</li>
+<li><code>communication/serialization.py</code> - 序列化工具</li>
+<li><code>communication/protocol.py</code> - 协议定义</li>
+</ol>
+<h3 id="phase-4">Phase 4: 辅助功能（推荐）</h3>
+<ol>
+<li><code>logging/metrics.py</code> - 指标追踪</li>
+<li><code>logging/formatter.py</code> - 日志格式化</li>
+<li><code>io/json.py</code> - JSON 序列化</li>
+<li><code>io/video.py</code> - 视频保存</li>
+</ol>
+<hr />
+<h2 id="13">13. 迁移指南</h2>
+<p>从原始 LeRobot 迁移到 Waleo：</p>
+<pre class="codehilite"><code class="language-python"># 原始代码
+from lerobot.common.utils.utils import auto_select_torch_device, TimerManager
+from lerobot.common.constants import HF_LEROBOT_HOME, ACTION
+from lerobot.common.utils.logging_utils import AverageMeter
+from lerobot.common.utils.random_utils import set_seed
+
+# 新代码
+from waleo_utils.device import get_training_device, TimerManager
+from waleo_utils.constants import WALES_HOME, ACTION
+from waleo_utils.logging import AverageMeter
+from waleo_utils.random import set_seed
+
+# 主要变化：
+# 1. 包名从 lerobot 改为 waleo
+# 2. auto_select_torch_device 改为 get_training_device/get_inference_device
+# 3. HF_LEROBOT_HOME 改为 WALES_HOME
+# 4. API 基本兼容
+</code></pre>
+
+<hr />
+<h2 id="14">14. 未来扩展</h2>
+<h3 id="141">14.1 可能的扩展</h3>
+<ul>
+<li>更多通信后端（gRPC, ZeroMQ）</li>
+<li>更多仿真环境接口（MuJoCo, Brax）</li>
+<li>性能分析工具集成</li>
+<li>自动超参数调优支持</li>
+</ul>
+<h3 id="142">14.2 版本计划</h3>
+<ul>
+<li>v0.1.0: 基础功能实现</li>
+<li>v0.2.0: 通信增强（gRPC 支持）</li>
+<li>v0.3.0: 仿真环境增强（更多后端）</li>
+</ul>
+<hr />
+<h2 id="15">15. 变更日志</h2>
+<h3 id="v011-2026-01-08">v0.1.1 (2026-01-08)</h3>
+<ul>
+<li>将仿真环境基类（BaseEnv, VectorEnv, EnvWrapper）移至 M11 仿真环境模块</li>
+<li>移除 Gym/Gymnasium 依赖</li>
+<li>优化模块职责划分，M01 专注于基础设施功能</li>
+</ul>
+<h3 id="v010-2026-01-08">v0.1.0 (2026-01-08)</h3>
+<ul>
+<li>初始设计</li>
+<li>从 lerobot 改名为 waleo</li>
+<li>添加通信基础设施（RPC）</li>
+<li>支持单机多卡/多机多卡训练</li>
+<li>支持异步推理架构</li>
+</ul>
+</body>
+</html>

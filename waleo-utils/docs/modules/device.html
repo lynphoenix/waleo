@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>device.md</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        h3 { font-size: 1.25em; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        table th {
+            background: #f4f4f4;
+            font-weight: 600;
+        }
+        blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 16px;
+            color: #666;
+            margin: 20px 0;
+        }
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+<h1 id="device">设备管理模块 (Device)</h1>
+<h2 id="_1">概述</h2>
+<p>设备管理模块提供设备选择、管理和分布式设备支持，自动根据使用场景分层选择设备。</p>
+<h2 id="_2">核心功能</h2>
+<h3 id="1">1. 训练设备选择</h3>
+<p>训练时必须使用 CUDA 以获得最佳性能。</p>
+<pre class="codehilite"><code class="language-python">from waleo_utils import get_training_device
+
+device = get_training_device()  # 返回 cuda:0
+model.to(device)
+</code></pre>
+
+<p><strong>注意</strong>：如果 CUDA 不可用，会抛出 <code>RuntimeError</code>。</p>
+<h3 id="2">2. 推理设备选择</h3>
+<p>推理时可以使用任何可用设备，优先级为：CUDA &gt; MPS &gt; CPU。</p>
+<pre class="codehilite"><code class="language-python">from waleo_utils import get_inference_device
+
+device = get_inference_device()  # 自动选择最佳设备
+model.to(device)
+</code></pre>
+
+<h3 id="3">3. 字符串设备获取</h3>
+<p>根据字符串获取设备对象。</p>
+<pre class="codehilite"><code class="language-python">from waleo_utils import get_device
+
+device = get_device(&quot;cuda:0&quot;)
+device = get_device(&quot;mps&quot;)
+device = get_device(&quot;cpu&quot;)
+</code></pre>
+
+<h3 id="4">4. 分布式训练设置</h3>
+<p>初始化分布式训练环境。</p>
+<pre class="codehilite"><code class="language-python">from waleo_utils import setup_distributed, get_rank, get_world_size
+
+# 从环境变量初始化（RANK, WORLD_SIZE, LOCAL_RANK）
+setup_distributed()
+
+rank = get_rank()          # 当前进程的全局 rank
+world_size = get_world_size()  # 总进程数
+local_rank = get_local_rank()  # 当前节点的本地 rank
+</code></pre>
+
+<h3 id="5">5. 主进程判断</h3>
+<p>判断当前进程是否为主进程（rank 0）。</p>
+<pre class="codehilite"><code class="language-python">from waleo_utils import is_main_process
+
+if is_main_process():
+    print(&quot;This is the main process&quot;)
+    # 仅在主进程执行的操作（保存模型、打印日志等）
+</code></pre>
+
+<h3 id="6">6. 进程同步</h3>
+<p>在所有进程间设置同步屏障。</p>
+<pre class="codehilite"><code class="language-python">from waleo_utils import barrier
+
+# 确保所有进程到达此点后再继续
+barrier()
+</code></pre>
+
+<h2 id="_3">环境变量</h2>
+<p>分布式训练需要设置以下环境变量：</p>
+<table>
+<thead>
+<tr>
+<th>变量</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RANK</code></td>
+<td>进程的全局 rank</td>
+<td><code>0</code>, <code>1</code>, <code>2</code></td>
+</tr>
+<tr>
+<td><code>WORLD_SIZE</code></td>
+<td>总进程数</td>
+<td><code>4</code>, <code>8</code></td>
+</tr>
+<tr>
+<td><code>LOCAL_RANK</code></td>
+<td>当前节点的本地 rank</td>
+<td><code>0</code>, <code>1</code></td>
+</tr>
+<tr>
+<td><code>MASTER_ADDR</code></td>
+<td>主节点地址</td>
+<td><code>localhost</code></td>
+</tr>
+<tr>
+<td><code>MASTER_PORT</code></td>
+<td>主节点端口</td>
+<td><code>29500</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="_4">使用示例</h2>
+<h3 id="gpu">单 GPU 训练</h3>
+<pre class="codehilite"><code class="language-python">import torch
+import torch.nn as nn
+from waleo_utils import get_training_device
+
+# 创建模型
+model = nn.Linear(10, 5)
+
+# 获取训练设备
+device = get_training_device()
+model.to(device)
+
+# 训练循环
+for data, target in dataloader:
+    data, target = data.to(device), target.to(device)
+    output = model(data)
+    # ...
+</code></pre>
+
+<h3 id="gpu_1">多 GPU 分布式训练</h3>
+<pre class="codehilite"><code class="language-python">import torch
+import torch.nn as nn
+from waleo_utils import setup_distributed, get_rank, is_main_process
+
+# 初始化分布式环境
+setup_distributed()
+
+rank = get_rank()
+
+# 创建模型并包装为 DDP
+model = nn.Linear(10, 5).cuda()
+model = nn.parallel.DistributedDataParallel(model)
+
+# 仅在主进程保存模型
+if is_main_process():
+    torch.save(model.state_dict(), &quot;model.pth&quot;)
+</code></pre>
+
+<h3 id="_5">推理</h3>
+<pre class="codehilite"><code class="language-python">from waleo_utils import get_inference_device
+
+# 自动选择最佳可用设备
+device = get_inference_device()
+model.to(device)
+
+# 执行推理
+with torch.no_grad():
+    output = model(input.to(device))
+</code></pre>
+
+<h2 id="api">API 参考</h2>
+<h3 id="_6">函数</h3>
+<table>
+<thead>
+<tr>
+<th>函数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_training_device()</code></td>
+<td>获取训练设备（仅 CUDA）</td>
+</tr>
+<tr>
+<td><code>get_inference_device()</code></td>
+<td>获取推理设备（CUDA &gt; MPS &gt; CPU）</td>
+</tr>
+<tr>
+<td><code>get_device(device_str)</code></td>
+<td>根据字符串获取设备</td>
+</tr>
+<tr>
+<td><code>setup_distributed()</code></td>
+<td>初始化分布式环境</td>
+</tr>
+<tr>
+<td><code>get_world_size()</code></td>
+<td>获取总进程数</td>
+</tr>
+<tr>
+<td><code>get_rank()</code></td>
+<td>获取当前进程 rank</td>
+</tr>
+<tr>
+<td><code>get_local_rank()</code></td>
+<td>获取本地 rank</td>
+</tr>
+<tr>
+<td><code>is_main_process()</code></td>
+<td>判断是否为主进程</td>
+</tr>
+<tr>
+<td><code>barrier()</code></td>
+<td>进程同步屏障</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_7">注意事项</h2>
+<ol>
+<li><strong>训练设备</strong>：训练时必须使用 CUDA，如果 CUDA 不可用会抛出异常</li>
+<li><strong>分布式初始化</strong>：必须在创建模型之前调用 <code>setup_distributed()</code></li>
+<li><strong>进程同步</strong>：使用 <code>barrier()</code> 确保所有进程同步，避免死锁</li>
+<li><strong>主进程操作</strong>：保存模型、打印日志等操作应在主进程执行</li>
+</ol>
+</body>
+</html>

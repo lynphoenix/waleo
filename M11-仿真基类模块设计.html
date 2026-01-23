@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M11-仿真基类模块设计.md</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        h3 { font-size: 1.25em; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        table th {
+            background: #f4f4f4;
+            font-weight: 600;
+        }
+        blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 16px;
+            color: #666;
+            margin: 20px 0;
+        }
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+<h1 id="m11-waleo-sim">M11: 仿真基类模块 (waleo-sim) 设计文档</h1>
+<blockquote>
+<p><strong>优先级</strong>: P1 (环境与训练)
+<strong>依赖</strong>: M02 (waleo-config)
+<strong>状态</strong>: 设计中</p>
+</blockquote>
+<hr />
+<h2 id="1">1. 模块概述</h2>
+<p><strong>模块名称</strong>: <code>waleo-sim</code>
+<strong>版本</strong>: v0.1.0
+<strong>描述</strong>: 提供仿真环境的基础类和接口，包括 Gym/Gymnasium 兼容的环境基类（BaseEnv, VectorEnv, EnvWrapper）、机器人仿真环境基类（RobotEnv）、任务定义、仿真后端接口等。</p>
+<hr />
+<h2 id="2">2. 模块职责</h2>
+<h3 id="21">2.1 核心职责</h3>
+<ul>
+<li><strong>Gym/Gymnasium 兼容的环境基类</strong>（BaseEnv, VectorEnv, EnvWrapper）：提供标准化的环境接口</li>
+<li>机器人环境基类（RobotEnv）：扩展 BaseEnv，添加机器人特有功能</li>
+<li>提供具体的仿真环境实现</li>
+<li>支持常见的机器人操作任务（推、抓取、放置等）</li>
+<li>环境工厂函数，方便创建不同配置的环境</li>
+<li>支持多种仿真后端（Isaac Gym, MuJoCo, PyBullet, SAPIEN, ManiSkill）</li>
+<li>奖励函数计算</li>
+<li>任务终止条件判断</li>
+<li>域随机化支持</li>
+</ul>
+<h3 id="22">2.2 非职责</h3>
+<ul>
+<li>不涉及训练循环逻辑（属于 M13 训练模块）</li>
+<li>不涉及策略模型（属于 M04-M06）</li>
+<li>不涉及真实机器人控制（属于 M09 机器人模块）</li>
+</ul>
+<hr />
+<h2 id="3">3. 子模块结构</h2>
+<pre class="codehilite"><code>waleo-sim/
+├── waleo_sim/
+│   ├── __init__.py
+│   ├── base/                # 环境基类
+│   │   ├── __init__.py
+│   │   ├── base.py          # Gym/Gymnasium 兼容的环境基类
+│   │   ├── wrapper.py       # 环境包装器基类
+│   │   ├── vector.py        # 向量化环境基类
+│   │   └── robot_env.py     # 机器人环境基类
+│   ├── tasks/               # 任务定义
+│   │   ├── __init__.py
+│   │   ├── push.py          # 推任务
+│   │   ├── pick_place.py    # 抓取放置任务
+│   │   ├── reach.py         # 到达任务
+│   │   └── factory.py       # 任务工厂
+│   ├── backends/            # 仿真后端
+│   │   ├── __init__.py
+│   │   ├── isaacgym.py      # Isaac Gym 后端
+│   │   ├── mujoco.py        # MuJoCo 后端
+│   │   ├── pybullet.py      # PyBullet 后端
+│   │   ├── sapien.py        # SAPIEN 后端
+│   │   └── maniskill.py     # ManiSkill 后端
+│   ├── wrappers/            # 环境包装器
+│   │   ├── __init__.py
+│   │   ├── recorder.py      # 录制包装器
+│   │   ├── grayscale.py     # 灰度图包装器
+│   │   └── resize.py        # 图像缩放包装器
+│   ├── randomization/       # 域随机化
+│   │   ├── __init__.py
+│   │   ├── visual.py        # 视觉随机化
+│   │   ├── physics.py       # 物理随机化
+│   │   └── dynamics.py      # 动力学随机化
+│   └── utils/               # 环境工具
+│       ├── __init__.py
+│       ├── camera.py        # 相机工具
+│       └── reward.py        # 奖励计算
+├── tests/
+│   ├── test_tasks.py
+│   ├── test_backends.py
+│   └── test_wrappers.py
+├── examples/
+│   ├── train_in_simulation.py
+│   └── eval_in_simulation.py
+├── pyproject.toml
+└── README.md
+</code></pre>
+
+<hr />
+<h2 id="4-api">4. API 设计</h2>
+<h3 id="41-gym-base">4.1 Gym 兼容的环境基类 (<code>base/</code>)</h3>
+<h4 id="411-baseenv-basebasepy">4.1.1 BaseEnv (<code>base/base.py</code>)</h4>
+<p><strong>设计理念</strong>：提供与 Gym/Gymnasium 兼容的环境基类</p>
+<pre class="codehilite"><code class="language-python">from abc import ABC, abstractmethod
+from typing import Optional, Tuple, Dict, Any
+import numpy as np
+
+class BaseEnv(ABC):
+    &quot;&quot;&quot;环境基类
+
+    与 Gym/Gymnasium API 兼容，提供：
+    - 标准的 reset/step 接口
+    - 观察和动作空间定义
+    - 渲染支持
+    &quot;&quot;&quot;
+
+    @property
+    @abstractmethod
+    def observation_space(self) -&gt; spaces.Space:
+        &quot;&quot;&quot;观察空间&quot;&quot;&quot;
+        ...
+
+    @property
+    @abstractmethod
+    def action_space(self) -&gt; spaces.Space:
+        &quot;&quot;&quot;动作空间&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def reset(
+        self,
+        seed: Optional[int] = None,
+        options: Optional[Dict] = None
+    ) -&gt; Tuple[np.ndarray, Dict]:
+        &quot;&quot;&quot;重置环境
+
+        Returns:
+            observation: 初始观察
+            info: 额外信息
+        &quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def step(
+        self,
+        action: np.ndarray
+    ) -&gt; Tuple[np.ndarray, float, bool, bool, Dict]:
+        &quot;&quot;&quot;执行一步
+
+        Args:
+            action: 动作
+
+        Returns:
+            observation: 新观察
+            reward: 奖励
+            terminated: 是否完成任务
+            truncated: 是否提前终止
+            info: 额外信息
+        &quot;&quot;&quot;
+        ...
+
+    def render(self, mode: str = &quot;human&quot;) -&gt; Optional[np.ndarray]:
+        &quot;&quot;&quot;渲染环境
+
+        Args:
+            mode: &quot;human&quot; 显示窗口, &quot;rgb_array&quot; 返回图像
+
+        Returns:
+            图像数组（如果是 rgb_array 模式）
+        &quot;&quot;&quot;
+        ...
+
+    def close(self) -&gt; None:
+        &quot;&quot;&quot;关闭环境&quot;&quot;&quot;
+        ...
+</code></pre>
+
+<h4 id="412-envwrapper-basewrapperpy">4.1.2 EnvWrapper (<code>base/wrapper.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class EnvWrapper(BaseEnv):
+    &quot;&quot;&quot;环境包装器基类
+
+    用于修改环境行为而不改变环境本身
+    &quot;&quot;&quot;
+
+    def __init__(self, env: BaseEnv):
+        self.env = env
+
+    @property
+    def observation_space(self):
+        return self.env.observation_space
+
+    @property
+    def action_space(self):
+        return self.env.action_space
+
+    def reset(self, seed=None, options=None):
+        return self.env.reset(seed, options)
+
+    def step(self, action):
+        return self.env.step(action)
+
+    def render(self, mode=&quot;human&quot;):
+        return self.env.render(mode)
+
+    def close(self):
+        return self.env.close()
+</code></pre>
+
+<h4 id="413-vectorenv-basevectorpy">4.1.3 VectorEnv (<code>base/vector.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class VectorEnv(ABC):
+    &quot;&quot;&quot;向量化环境基类
+
+    支持并行运行多个环境实例，提高训练效率
+    &quot;&quot;&quot;
+
+    @property
+    @abstractmethod
+    def num_envs(self) -&gt; int:
+        &quot;&quot;&quot;环境数量&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def reset(self, seed: Optional[int] = None) -&gt; np.ndarray:
+        &quot;&quot;&quot;重置所有环境&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def step(self, actions: np.ndarray) -&gt; Tuple:
+        &quot;&quot;&quot;在所有环境中执行动作
+
+        Returns:
+            observations: (num_envs, *obs_shape)
+            rewards: (num_envs,)
+            terminateds: (num_envs,)
+            truncateds: (num_envs,)
+            infos: List[Dict]
+        &quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def close(self) -&gt; None:
+        &quot;&quot;&quot;关闭所有环境&quot;&quot;&quot;
+        ...
+</code></pre>
+
+<h4 id="_1">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_sim.base import BaseEnv, EnvWrapper
+
+class MyEnv(BaseEnv):
+    def __init__(self):
+        self.observation_space = spaces.Box(low=0, high=1, shape=(10,))
+        self.action_space = spaces.Box(low=-1, high=1, shape=(3,))
+
+    def reset(self, seed=None, options=None):
+        return np.zeros(10), {}
+
+    def step(self, action):
+        obs = np.random.rand(10)
+        reward = 0.0
+        terminated = False
+        truncated = False
+        info = {}
+        return obs, reward, terminated, truncated, info
+</code></pre>
+
+<h4 id="_2">依赖</h4>
+<ul>
+<li><code>gymnasium</code> (标准库)</li>
+<li><code>numpy</code></li>
+</ul>
+<hr />
+<h3 id="42-baserobot_envpy">4.2 机器人环境基类 (<code>base/robot_env.py</code>)</h3>
+<h4 id="robotenv">RobotEnv 类</h4>
+<pre class="codehilite"><code class="language-python">class RobotEnv(BaseEnv):
+    &quot;&quot;&quot;机器人仿真环境基类
+
+    扩展 BaseEnv，添加机器人特有的功能：
+    - 机器人模型加载
+    - 相机渲染
+    - 物理交互
+    - 奖励计算
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        task: str,
+        robot_type: str = &quot;so100&quot;,
+        render_mode: str | None = None,
+        simulation_backend: str = &quot;mujoco&quot;,
+        headless: bool = False,
+        **kwargs
+    ):
+        &quot;&quot;&quot;
+        Args:
+            task: 任务类型 (&quot;push&quot;, &quot;pick_place&quot;, &quot;reach&quot;)
+            robot_type: 机器人类型 (&quot;so100&quot;, &quot;aloha&quot;, &quot;koch&quot;)
+            render_mode: 渲染模式 (&quot;human&quot;, &quot;rgb_array&quot;, None)
+            simulation_backend: 仿真后端 (&quot;mujoco&quot;, &quot;isaacgym&quot;, &quot;pybullet&quot;, &quot;sapien&quot;)
+            headless: 无头模式（不显示窗口）
+        &quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def _load_robot_model(self) -&gt; None:
+        &quot;&quot;&quot;加载机器人模型&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def _setup_cameras(self) -&gt; None:
+        &quot;&quot;&quot;设置相机&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def _compute_reward(self, achieved_goal, desired_goal) -&gt; float:
+        &quot;&quot;&quot;计算奖励&quot;&quot;&quot;
+        ...
+
+    def _check_termination(self) -&gt; bool:
+        &quot;&quot;&quot;检查是否终止&quot;&quot;&quot;
+        ...
+
+    @property
+    @abstractmethod
+    def robot_state(self) -&gt; np.ndarray:
+        &quot;&quot;&quot;获取机器人状态&quot;&quot;&quot;
+        ...
+
+    @property
+    def camera_images(self) -&gt; dict[str, np.ndarray]:
+        &quot;&quot;&quot;获取所有相机图像&quot;&quot;&quot;
+        ...
+</code></pre>
+
+<h4 id="_3">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_sim.base import RobotEnv
+
+class MyCustomEnv(RobotEnv):
+    def _load_robot_model(self):
+        # 加载机器人模型
+        pass
+
+    def _setup_cameras(self):
+        # 设置相机
+        pass
+
+    def _compute_reward(self, achieved_goal, desired_goal):
+        # 计算奖励
+        return -np.linalg.norm(achieved_goal - desired_goal)
+</code></pre>
+
+<h4 id="_4">依赖</h4>
+<ul>
+<li><code>waleo_sim.base.BaseEnv</code> (M11)</li>
+<li><code>numpy</code></li>
+<li>仿真后端库（可选）</li>
+</ul>
+<hr />
+<h3 id="43-tasks">4.3 任务定义 (<code>tasks/</code>)</h3>
+<h4 id="431-taskspushpy">4.3.1 推任务 (<code>tasks/push.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class PushEnv(RobotEnv):
+    &quot;&quot;&quot;推任务环境
+
+    目标：用机器人末端执行器推动物体到目标位置
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        robot_type: str = &quot;so100&quot;,
+        object_type: str = &quot;cube&quot;,
+        render_mode: str | None = None,
+        simulation_backend: str = &quot;mujoco&quot;,
+        **kwargs
+    ):
+        &quot;&quot;&quot;
+        Args:
+            robot_type: 机器人类型
+            object_type: 被推物体类型 (&quot;cube&quot;, &quot;sphere&quot;, &quot;cylinder&quot;)
+        &quot;&quot;&quot;
+        self.object_type = object_type
+        super().__init__(
+            task=&quot;push&quot;,
+            robot_type=robot_type,
+            render_mode=render_mode,
+            simulation_backend=simulation_backend,
+            **kwargs
+        )
+
+    def reset(self, seed: int | None = None):
+        &quot;&quot;&quot;重置环境
+
+        随机放置：
+        - 机器人初始位置
+        - 物体初始位置
+        - 目标位置
+        &quot;&quot;&quot;
+        ...
+
+    def step(self, action: np.ndarray):
+        &quot;&quot;&quot;执行一步
+
+        Args:
+            action: 机器人动作 (位置控制或力矩控制)
+
+        Returns:
+            observation: 包含机器人状态、物体位置、目标位置
+            reward: 距离目标的负值（越近奖励越高）
+            terminated: 是否成功到达目标
+            truncated: 是否超时
+            info: 额外信息
+        &quot;&quot;&quot;
+        ...
+
+    def _compute_reward(self, achieved_goal, desired_goal):
+        &quot;&quot;&quot;奖励 = -距离目标的距离&quot;&quot;&quot;
+        return -np.linalg.norm(achieved_goal - desired_goal)
+
+    def _check_termination(self):
+        &quot;&quot;&quot;成功条件：物体与目标距离 &lt; 阈值&quot;&quot;&quot;
+        return np.linalg.norm(self.object_pos - self.goal_pos) &lt; 0.05
+</code></pre>
+
+<h4 id="432-taskspick_placepy">4.3.2 抓取放置任务 (<code>tasks/pick_place.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class PickPlaceEnv(RobotEnv):
+    &quot;&quot;&quot;抓取-放置任务环境
+
+    目标：抓起物体并放置到目标位置
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        robot_type: str = &quot;so100&quot;,
+        object_type: str = &quot;cube&quot;,
+        gripper_type: str = &quot;parallel&quot;,
+        render_mode: str | None = None,
+        simulation_backend: str = &quot;mujoco&quot;,
+        **kwargs
+    ):
+        &quot;&quot;&quot;
+        Args:
+            robot_type: 机器人类型
+            object_type: 被抓取物体类型
+            gripper_type: 夹爪类型 (&quot;parallel&quot;, &quot;suction&quot;)
+        &quot;&quot;&quot;
+        self.object_type = object_type
+        self.gripper_type = gripper_type
+        super().__init__(
+            task=&quot;pick_place&quot;,
+            robot_type=robot_type,
+            render_mode=render_mode,
+            simulation_backend=simulation_backend,
+            **kwargs
+        )
+
+    def reset(self, seed: int | None = None):
+        &quot;&quot;&quot;重置环境
+
+        随机放置：
+        - 机器人初始位置
+        - 物体初始位置（在桌子表面）
+        - 目标放置位置（在桌子表面）
+        &quot;&quot;&quot;
+        ...
+
+    def step(self, action: np.ndarray):
+        &quot;&quot;&quot;执行一步
+
+        Returns:
+            observation: 包含机器人状态、物体位置、目标位置、夹爪状态
+            reward: 综合奖励（接近物体 + 抓取成功 + 接近目标）
+            terminated: 是否成功完成
+            truncated: 是否超时
+            info: 包含 &quot;is_grasped&quot;, &quot;is_placed&quot; 等信息
+        &quot;&quot;&quot;
+        ...
+
+    def _compute_reward(self, achieved_goal, desired_goal):
+        &quot;&quot;&quot;综合奖励函数&quot;&quot;&quot;
+        # 接近物体奖励
+        gripper_to_obj = np.linalg.norm(self.gripper_pos - self.object_pos)
+        reach_reward = -gripper_to_obj
+
+        # 抓取奖励（物体被抬起）
+        grasp_reward = 1.0 if self.object_pos[2] &gt; 0.1 else 0.0
+
+        # 放置奖励（接近目标）
+        place_reward = -np.linalg.norm(self.object_pos - self.goal_pos)
+
+        # 加权组合
+        total_reward = (
+            0.3 * reach_reward +
+            0.3 * grasp_reward +
+            0.4 * place_reward
+        )
+
+        return total_reward
+
+    def _check_termination(self):
+        &quot;&quot;&quot;成功条件：物体被放置在目标附近&quot;&quot;&quot;
+        object_on_table = self.object_pos[2] &lt; 0.05
+        near_goal = np.linalg.norm(self.object_pos[:2] - self.goal_pos[:2]) &lt; 0.05
+        return object_on_table and near_goal
+</code></pre>
+
+<h4 id="433-tasksreachpy">4.3.3 到达任务 (<code>tasks/reach.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class ReachEnv(RobotEnv):
+    &quot;&quot;&quot;到达任务环境
+
+    目标：控制机器人末端到达目标位置
+    简单任务，用于调试和验证
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        robot_type: str = &quot;so100&quot;,
+        render_mode: str | None = None,
+        simulation_backend: str = &quot;mujoco&quot;,
+        **kwargs
+    ):
+        super().__init__(
+            task=&quot;reach&quot;,
+            robot_type=robot_type,
+            render_mode=render_mode,
+            simulation_backend=simulation_backend,
+            **kwargs
+        )
+
+    def reset(self, seed: int | None = None):
+        &quot;&quot;&quot;重置环境，随机设置目标位置&quot;&quot;&quot;
+        ...
+
+    def step(self, action: np.ndarray):
+        &quot;&quot;&quot;执行一步&quot;&quot;&quot;
+        ...
+
+    def _compute_reward(self, achieved_goal, desired_goal):
+        &quot;&quot;&quot;奖励 = -距离目标的距离&quot;&quot;&quot;
+        return -np.linalg.norm(achieved_goal - desired_goal)
+
+    def _check_termination(self):
+        &quot;&quot;&quot;成功条件：末端与目标距离 &lt; 阈值&quot;&quot;&quot;
+        return np.linalg.norm(self.end_effector_pos - self.goal_pos) &lt; 0.02
+</code></pre>
+
+<h4 id="_5">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_env.tasks import PushEnv, PickPlaceEnv, ReachEnv
+
+# 创建环境
+env = PushEnv(
+    robot_type=&quot;so100&quot;,
+    object_type=&quot;cube&quot;,
+    render_mode=&quot;rgb_array&quot;,
+    simulation_backend=&quot;mujoco&quot;
+)
+
+# 训练循环
+obs, info = env.reset()
+for _ in range(1000):
+    action = policy.predict(obs)
+    obs, reward, terminated, truncated, info = env.step(action)
+
+    if terminated or truncated:
+        obs, info = env.reset()
+
+env.close()
+</code></pre>
+
+<h4 id="_6">依赖</h4>
+<ul>
+<li><code>waleo_env.base.RobotEnv</code></li>
+<li><code>numpy</code></li>
+<li>仿真后端库</li>
+</ul>
+<hr />
+<h3 id="44-tasksfactorypy">4.4 任务工厂 (<code>tasks/factory.py</code>)</h3>
+<h4 id="_7">函数列表</h4>
+<table>
+<thead>
+<tr>
+<th>函数名</th>
+<th>输入</th>
+<th>输出</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>make_env(task, **kwargs)</code></td>
+<td><code>str, ...</code></td>
+<td><code>RobotEnv</code></td>
+<td>创建指定任务的环境</td>
+</tr>
+<tr>
+<td><code>make_vec_env(task, num_envs, **kwargs)</code></td>
+<td><code>str, int, ...</code></td>
+<td><code>VectorEnv</code></td>
+<td>创建向量化环境</td>
+</tr>
+<tr>
+<td><code>get_all_tasks()</code></td>
+<td>无</td>
+<td><code>list[str]</code></td>
+<td>获取所有可用任务</td>
+</tr>
+<tr>
+<td><code>get_task_config(task)</code></td>
+<td><code>str</code></td>
+<td><code>dict</code></td>
+<td>获取任务默认配置</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_8">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_env.tasks import make_env, make_vec_env, get_all_tasks
+
+# 查看所有可用任务
+tasks = get_all_tasks()
+print(tasks)  # ['push', 'pick_place', 'reach']
+
+# 创建单个环境
+env = make_env(
+    task=&quot;push&quot;,
+    robot_type=&quot;so100&quot;,
+    render_mode=&quot;human&quot;
+)
+
+# 创建向量化环境（并行训练）
+vec_env = make_vec_env(
+    task=&quot;pick_place&quot;,
+    num_envs=8,
+    robot_type=&quot;so100&quot;,
+    simulation_backend=&quot;isaacgym&quot;,  # Isaac Gym 支持并行
+    asynchronous=True
+)
+</code></pre>
+
+<h4 id="_9">依赖</h4>
+<ul>
+<li><code>waleo_env.tasks.*</code></li>
+<li><code>waleo_utils.simulation.VectorEnv</code> (M01)</li>
+</ul>
+<hr />
+<h3 id="45-backends">4.5 仿真后端 (<code>backends/</code>)</h3>
+<h4 id="451">4.5.1 后端接口</h4>
+<pre class="codehilite"><code class="language-python">class SimulationBackend(ABC):
+    &quot;&quot;&quot;仿真后端抽象接口&quot;&quot;&quot;
+
+    @abstractmethod
+    def load_model(self, model_path: str) -&gt; None:
+        &quot;&quot;&quot;加载模型&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def step(self, action: np.ndarray) -&gt; None:
+        &quot;&quot;&quot;执行仿真步&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def get_state(self) -&gt; dict:
+        &quot;&quot;&quot;获取环境状态&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def render(self, mode: str = &quot;rgb_array&quot;) -&gt; np.ndarray | None:
+        &quot;&quot;&quot;渲染环境&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def close(self) -&gt; None:
+        &quot;&quot;&quot;关闭仿真&quot;&quot;&quot;
+        ...
+</code></pre>
+
+<h4 id="452-mujoco-backendsmujocopy">4.5.2 MuJoCo 后端 (<code>backends/mujoco.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class MuJoCoBackend(SimulationBackend):
+    &quot;&quot;&quot;MuJoCo 仿真后端
+
+    特点：
+    - 快速物理仿真
+    - 丰富的机器人模型库
+    - 支持域随机化
+    &quot;&quot;&quot;
+
+    def __init__(self, model_path: str, **kwargs):
+        import mujoco
+        self.model = mujoco.MjModel.from_xml_path(model_path)
+        self.data = mujoco.MjData(self.model)
+        ...
+
+    def step(self, action: np.ndarray) -&gt; None:
+        self.data.ctrl[:] = action
+        mujoco.mj_step(self.model, self.data)
+
+    def render(self, mode: str = &quot;rgb_array&quot;) -&gt; np.ndarray | None:
+        if mode == &quot;rgb_array&quot;:
+            return self._render_offscreen()
+        elif mode == &quot;human&quot;:
+            self._render_window()
+</code></pre>
+
+<h4 id="453-isaac-gym-backendsisaacgympy">4.5.3 Isaac Gym 后端 (<code>backends/isaacgym.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class IsaacGymBackend(SimulationBackend):
+    &quot;&quot;&quot;Isaac Gym 仿真后端
+
+    特点：
+    - GPU 加速仿真
+    - 支持大规模并行（数千个环境）
+    - 适合大规模训练
+    &quot;&quot;&quot;
+
+    def __init__(self, model_path: str, num_envs: int = 1, **kwargs):
+        from isaacgym import gymapi
+        self.gym = gymapi.acquire_gym()
+        self.num_envs = num_envs
+        ...
+
+    def step(self, action: np.ndarray) -&gt; None:
+        # 并行执行多个环境
+        self.gym.simulate(self.sim)
+</code></pre>
+
+<h4 id="454-pybullet-backendspybulletpy">4.5.4 PyBullet 后端 (<code>backends/pybullet.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class PyBulletBackend(SimulationBackend):
+    &quot;&quot;&quot;PyBullet 仿真后端
+
+    特点：
+    - 开源免费
+    - 易于安装
+    - 支持多种机器人
+    &quot;&quot;&quot;
+
+    def __init__(self, model_path: str, **kwargs):
+        import pybullet as p
+        self.client = p.connect(p.GUI)
+        p.setGravity(0, 0, -9.81)
+        ...
+</code></pre>
+
+<h4 id="455-maniskill-backendsmaniskillpy">4.5.5 ManiSkill 后端 (<code>backends/maniskill.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class ManiSkillBackend(SimulationBackend):
+    &quot;&quot;&quot;ManiSkill 仿真后端
+
+    特点：
+    - 基于 SAPIEN 引擎
+    - 专业的机器人操作仿真
+    - 支持复杂物理交互
+    - 丰富的操作任务库
+    - GPU 加速渲染和物理
+    - 支持并行仿真
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        task: str = &quot;PickCube&quot;,
+        num_envs: int = 1,
+        enable_visual_obs: bool = True,
+        **kwargs
+    ):
+        &quot;&quot;&quot;
+        Args:
+            task: ManiSkill 任务名称
+                - PickCube: 抓取立方体
+                - PushCube: 推动立方体
+                - StackCube: 堆叠立方体
+                - PlugCharger: 插入充电器
+                - TurnFaucet: 转动水龙头
+                - OpenCabinetDrawer: 打开抽屉
+            num_envs: 并行环境数量
+            enable_visual_obs: 启用视觉观察
+        &quot;&quot;&quot;
+        try:
+            import maniskill2_api
+            import sapien.core as sapien
+        except ImportError:
+            raise ImportError(
+                &quot;ManiSkill requires maniskill2-api and sapien. &quot;
+                &quot;Install with: pip install maniskill2-api sapien&quot;
+            )
+
+        self.task = task
+        self.num_envs = num_envs
+
+        # 创建 ManiSkill 环境
+        self.env = maniskill2_api.create_environment(
+            task=task,
+            num_envs=num_envs,
+            enable_visual_obs=enable_visual_obs,
+            **kwargs
+        )
+
+        # 获取环境信息
+        self.observation_space = self.env.observation_space
+        self.action_space = self.env.action_space
+
+    def reset(self, seed: int | None = None) -&gt; tuple:
+        &quot;&quot;&quot;重置环境
+
+        Returns:
+            observation: 观察数据
+                - 包含机器人关节位置、速度
+                - 物体位置、姿态
+                - 可选：RGB-D 图像
+            info: 额外信息
+        &quot;&quot;&quot;
+        obs = self.env.reset()
+        return obs, {}
+
+    def step(self, action: np.ndarray) -&gt; tuple:
+        &quot;&quot;&quot;执行一步
+
+        Args:
+            action: 动作（机器人关节位置或速度）
+
+        Returns:
+            observation: 新观察
+            reward: 奖励
+            terminated: 是否完成任务
+            truncated: 是否超时
+            info: 额外信息
+        &quot;&quot;&quot;
+        obs, reward, terminated, info = self.env.step(action)
+        truncated = False  # ManiSkill 使用 terminated
+        return obs, reward, terminated, truncated, info
+
+    def render(self, mode: str = &quot;rgb_array&quot;) -&gt; np.ndarray | None:
+        &quot;&quot;&quot;渲染环境
+
+        Args:
+            mode: &quot;rgb_array&quot; 返回图像数组，&quot;human&quot; 显示窗口
+
+        Returns:
+            图像数组（如果是 rgb_array 模式）
+        &quot;&quot;&quot;
+        if mode == &quot;rgb_array&quot;:
+            return self.env.render(mode=&quot;cameras&quot;)
+        elif mode == &quot;human&quot;:
+            self.env.render(mode=&quot;viewer&quot;)
+            return None
+
+    def close(self) -&gt; None:
+        &quot;&quot;&quot;关闭环境&quot;&quot;&quot;
+        self.env.close()
+
+    def get_state(self) -&gt; dict:
+        &quot;&quot;&quot;获取环境状态&quot;&quot;&quot;
+        return {
+            &quot;observation_space&quot;: self.observation_space,
+            &quot;action_space&quot;: self.action_space,
+            &quot;num_envs&quot;: self.num_envs,
+        }
+
+    @property
+    def supported_tasks(self) -&gt; list[str]:
+        &quot;&quot;&quot;获取支持的任务列表&quot;&quot;&quot;
+        return [
+            &quot;PickCube&quot;,
+            &quot;PushCube&quot;,
+            &quot;StackCube&quot;,
+            &quot;PlugCharger&quot;,
+            &quot;TurnFaucet&quot;,
+            &quot;OpenCabinetDrawer&quot;,
+        ]
+</code></pre>
+
+<h4 id="maniskill">ManiSkill 任务说明</h4>
+<table>
+<thead>
+<tr>
+<th>任务名称</th>
+<th>描述</th>
+<th>动作空间</th>
+<th>难度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PickCube</code></td>
+<td>从桌子上抓取立方体</td>
+<td>7-DOF 位置控制</td>
+<td>⭐</td>
+</tr>
+<tr>
+<td><code>PushCube</code></td>
+<td>推动立方体到目标位置</td>
+<td>7-DOF 位置控制</td>
+<td>⭐</td>
+</tr>
+<tr>
+<td><code>StackCube</code></td>
+<td>将立方体堆叠起来</td>
+<td>7-DOF 位置控制</td>
+<td>⭐⭐</td>
+</tr>
+<tr>
+<td><code>PlugCharger</code></td>
+<td>将充电器插入插座</td>
+<td>7-DOF 位置控制</td>
+<td>⭐⭐⭐</td>
+</tr>
+<tr>
+<td><code>TurnFaucet</code></td>
+<td>转动水龙头</td>
+<td>7-DOF 位置控制</td>
+<td>⭐⭐</td>
+</tr>
+<tr>
+<td><code>OpenCabinetDrawer</code></td>
+<td>打开抽屉</td>
+<td>7-DOF 位置控制</td>
+<td>⭐⭐</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_10">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_env.tasks import make_env
+
+# 使用 ManiSkill 后端
+env = make_env(
+    task=&quot;pick_place&quot;,
+    simulation_backend=&quot;maniskill&quot;,
+    maniskill_task=&quot;PickCube&quot;,  # ManiSkill 任务
+    num_envs=8,  # 并行环境
+    enable_visual_obs=True
+)
+
+obs, info = env.reset()
+for step in range(1000):
+    action = policy.predict(obs)
+    obs, reward, terminated, truncated, info = env.step(action)
+
+    if terminated:
+        print(&quot;Task completed!&quot;)
+        obs, info = env.reset()
+
+env.close()
+</code></pre>
+
+<h4 id="_11">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_env.backends import MuJoCoBackend, IsaacGymBackend, PyBulletBackend, ManiSkillBackend
+
+# 使用 MuJoCo
+backend = MuJoCoBackend(model_path=&quot;models/robot.xml&quot;)
+state = backend.get_state()
+backend.step(action)
+image = backend.render(&quot;rgb_array&quot;)
+
+# 使用 Isaac Gym（并行）
+backend = IsaacGymBackend(
+    model_path=&quot;models/robot.xml&quot;,
+    num_envs=1024
+)
+states = backend.get_state()  # (1024, state_dim)
+
+# 使用 ManiSkill（机器人操作任务）
+backend = ManiSkillBackend(
+    task=&quot;PickCube&quot;,
+    num_envs=8,
+    enable_visual_obs=True
+)
+obs, info = backend.reset()
+obs, reward, terminated, truncated, info = backend.step(action)
+</code></pre>
+
+<h4 id="_12">依赖</h4>
+<ul>
+<li><code>mujoco</code> (可选)</li>
+<li><code>isaacgym</code> (可选)</li>
+<li><code>pybullet</code> (可选)</li>
+<li><code>maniskill2-api</code> (可选)</li>
+<li><code>sapien</code> (可选，ManiSkill 需要)</li>
+</ul>
+<hr />
+<h3 id="46-wrappers">4.6 环境包装器 (<code>wrappers/</code>)</h3>
+<h4 id="461-wrappersrecorderpy">4.6.1 录制包装器 (<code>wrappers/recorder.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class RecordVideo(EnvWrapper):
+    &quot;&quot;&quot;录制环境视频&quot;&quot;&quot;
+
+    def __init__(
+        self,
+        env: BaseEnv,
+        video_folder: str,
+        video_length: int = 500,
+        name_prefix: str = &quot;rl-video&quot;
+    ):
+        &quot;&quot;&quot;
+        Args:
+            env: 被包装的环境
+            video_folder: 视频保存路径
+            video_length: 每个视频的帧数
+            name_prefix: 视频文件名前缀
+        &quot;&quot;&quot;
+        super().__init__(env)
+        self.video_folder = Path(video_folder)
+        self.video_length = video_length
+        self.name_prefix = name_prefix
+        self.frames = []
+        self.step_count = 0
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+
+        # 记录帧
+        frame = self.env.render(&quot;rgb_array&quot;)
+        self.frames.append(frame)
+
+        # 保存视频
+        if len(self.frames) &gt;= self.video_length:
+            self._save_video()
+
+        return obs, reward, terminated, truncated, info
+
+    def _save_video(self):
+        &quot;&quot;&quot;保存视频到磁盘&quot;&quot;&quot;
+        from waleo_utils.io import write_video
+        video_path = self.video_folder / f&quot;{self.name_prefix}_{self.step_count}.mp4&quot;
+        write_video(video_path, np.array(self.frames), fps=30)
+        self.frames = []
+        self.step_count += 1
+</code></pre>
+
+<h4 id="462-wrappersgrayscalepy-wrappersresizepy">4.6.2 图像处理包装器 (<code>wrappers/grayscale.py</code>, <code>wrappers/resize.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class GrayScaleObservation(EnvWrapper):
+    &quot;&quot;&quot;将彩色图像转换为灰度图&quot;&quot;&quot;
+
+    def __init__(self, env: BaseEnv, keep_dim: bool = False):
+        super().__init__(env)
+        self.keep_dim = keep_dim
+
+    def observation(self, obs):
+        # 转换图像
+        if &quot;observation.image&quot; in obs:
+            img = obs[&quot;observation.image&quot;]
+            gray = np.mean(img, axis=-1, keepdims=self.keep_dim)
+            obs[&quot;observation.image&quot;] = gray
+        return obs
+
+class ResizeObservation(EnvWrapper):
+    &quot;&quot;&quot;调整观察图像大小&quot;&quot;&quot;
+
+    def __init__(self, env: BaseEnv, shape: tuple[int, int]):
+        super().__init__(env)
+        self.shape = shape
+
+    def observation(self, obs):
+        if &quot;observation.image&quot; in obs:
+            import cv2
+            img = obs[&quot;observation.image&quot;]
+            resized = cv2.resize(img, self.shape)
+            obs[&quot;observation.image&quot;] = resized
+        return obs
+</code></pre>
+
+<h4 id="_13">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_env.tasks import make_env
+from waleo_env.wrappers import RecordVideo, GrayScaleObservation, ResizeObservation
+
+# 创建环境并包装
+env = make_env(&quot;push&quot;, render_mode=&quot;rgb_array&quot;)
+env = RecordVideo(env, video_folder=&quot;./videos&quot;, video_length=1000)
+env = ResizeObservation(env, shape=(224, 224))
+env = GrayScaleObservation(env, keep_dim=True)
+
+# 训练时会自动保存视频
+obs, info = env.reset()
+for _ in range(2000):
+    action = policy.predict(obs)
+    obs, reward, terminated, truncated, info = env.step(action)
+</code></pre>
+
+<h4 id="_14">依赖</h4>
+<ul>
+<li><code>waleo_sim.base.EnvWrapper</code> (M11)</li>
+<li><code>opencv-python</code> (可选)</li>
+</ul>
+<hr />
+<h3 id="47-randomization">4.7 域随机化 (<code>randomization/</code>)</h3>
+<h4 id="471-randomizationvisualpy">4.7.1 视觉随机化 (<code>randomization/visual.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class VisualRandomization:
+    &quot;&quot;&quot;视觉域随机化
+
+    随机化：
+    - 光照条件
+    - 相机噪声
+    - 背景图像
+    - 颜色抖动
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        enable_lighting: bool = True,
+        enable_noise: bool = True,
+        enable_background: bool = True,
+        enable_color_jitter: bool = True
+    ):
+        ...
+
+    def randomize(self, image: np.ndarray) -&gt; np.ndarray:
+        &quot;&quot;&quot;对图像应用随机化&quot;&quot;&quot;
+        if self.enable_lighting:
+            image = self._randomize_lighting(image)
+        if self.enable_noise:
+            image = self._add_noise(image)
+        if self.enable_color_jitter:
+            image = self._jitter_color(image)
+        return image
+</code></pre>
+
+<h4 id="472-randomizationphysicspy">4.7.2 物理随机化 (<code>randomization/physics.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">class PhysicsRandomization:
+    &quot;&quot;&quot;物理参数随机化
+
+    随机化：
+    - 物体质量
+    - 摩擦系数
+    - 重力大小
+    - 关节阻尼
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        randomize_mass: bool = True,
+        randomize_friction: bool = True,
+        mass_range: tuple[float, float] = (0.5, 2.0),
+        friction_range: tuple[float, float] = (0.5, 1.0)
+    ):
+        ...
+
+    def randomize(self, env: RobotEnv) -&gt; None:
+        &quot;&quot;&quot;对环境应用物理随机化&quot;&quot;&quot;
+        if self.randomize_mass:
+            self._randomize_object_mass(env)
+        if self.randomize_friction:
+            self._randomize_friction(env)
+</code></pre>
+
+<h4 id="_15">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_env.tasks import make_env
+from waleo_env.randomization import VisualRandomization, PhysicsRandomization
+
+env = make_env(&quot;pick_place&quot;)
+
+# 添加域随机化
+visual_rand = VisualRandomization(
+    enable_lighting=True,
+    enable_noise=True
+)
+physics_rand = PhysicsRandomization(
+    randomize_mass=True,
+    randomize_friction=True
+)
+
+# 训练时每个 episode 都随机化
+for episode in range(1000):
+    physics_rand.randomize(env)
+    obs, info = env.reset()
+
+    for step in range(500):
+        action = policy.predict(obs)
+        obs, reward, terminated, truncated, info = env.step(action)
+
+        # 对图像应用视觉随机化
+        if &quot;observation.image&quot; in obs:
+            obs[&quot;observation.image&quot;] = visual_rand.randomize(obs[&quot;observation.image&quot;])
+</code></pre>
+
+<h4 id="_16">依赖</h4>
+<ul>
+<li><code>numpy</code></li>
+<li><code>opencv-python</code> (可选)</li>
+</ul>
+<hr />
+<h3 id="48-utils">4.8 工具函数 (<code>utils/</code>)</h3>
+<h4 id="481-utilscamerapy">4.8.1 相机工具 (<code>utils/camera.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">def get_camera_intrinsics(
+    width: int,
+    height: int,
+    fov: float = 60.0
+) -&gt; np.ndarray:
+    &quot;&quot;&quot;获取相机内参矩阵
+
+    Returns:
+        (3, 3) 内参矩阵
+    &quot;&quot;&quot;
+    ...
+
+def get_camera_extrinsics(
+    position: np.ndarray,
+    look_at: np.ndarray,
+    up: np.ndarray = np.array([0, 0, 1])
+) -&gt; np.ndarray:
+    &quot;&quot;&quot;获取相机外参矩阵
+
+    Returns:
+        (4, 4) 变换矩阵
+    &quot;&quot;&quot;
+    ...
+
+def project_point_to_image(
+    point_3d: np.ndarray,
+    intrinsics: np.ndarray,
+    extrinsics: np.ndarray
+) -&gt; tuple[int, int]:
+    &quot;&quot;&quot;将3D点投影到2D图像坐标&quot;&quot;&quot;
+    ...
+</code></pre>
+
+<h4 id="482-utilsrewardpy">4.8.2 奖励计算 (<code>utils/reward.py</code>)</h4>
+<pre class="codehilite"><code class="language-python">def compute_distance_reward(
+    achieved: np.ndarray,
+    desired: np.ndarray,
+    threshold: float = 0.05
+) -&gt; float:
+    &quot;&quot;&quot;计算距离奖励
+
+    Returns:
+        奖励值（负距离，在阈值内返回0）
+    &quot;&quot;&quot;
+    dist = np.linalg.norm(achieved - desired)
+    return max(-dist, 0.0) if dist &lt; threshold else -dist
+
+def compute_sparse_reward(
+    achieved: np.ndarray,
+    desired: np.ndarray,
+    threshold: float = 0.05
+) -&gt; float:
+    &quot;&quot;&quot;计算稀疏奖励（仅成功时给奖励）
+
+    Returns:
+        1.0 if success, else 0.0
+    &quot;&quot;&quot;
+    dist = np.linalg.norm(achieved - desired)
+    return 1.0 if dist &lt; threshold else 0.0
+</code></pre>
+
+<h4 id="_17">使用示例</h4>
+<pre class="codehilite"><code class="language-python">from waleo_env.utils import get_camera_intrinsics, compute_distance_reward
+
+# 获取相机参数
+K = get_camera_intrinsics(width=640, height=480, fov=60)
+
+# 计算奖励
+reward = compute_distance_reward(
+    achieved=current_pos,
+    desired=target_pos,
+    threshold=0.05
+)
+</code></pre>
+
+<h4 id="_18">依赖</h4>
+<ul>
+<li><code>numpy</code></li>
+</ul>
+<hr />
+<h2 id="5">5. 模块接口</h2>
+<h3 id="51-api-__init__py">5.1 公开 API (<code>__init__.py</code>)</h3>
+<pre class="codehilite"><code class="language-python"># 环境基类（Gym/Gymnasium 兼容）
+from waleo_sim.base import (
+    BaseEnv,
+    EnvWrapper,
+    VectorEnv,
+    RobotEnv,
+)
+
+# 任务环境
+from waleo_sim.tasks import PushEnv, PickPlaceEnv, ReachEnv
+
+# 工厂函数
+from waleo_sim.tasks import make_env, make_vec_env, get_all_tasks
+
+# 后端
+from waleo_sim.backends import (
+    SimulationBackend,
+    MuJoCoBackend,
+    IsaacGymBackend,
+    PyBulletBackend,
+)
+
+# 包装器
+from waleo_sim.wrappers import (
+    RecordVideo,
+    GrayScaleObservation,
+    ResizeObservation,
+)
+
+# 域随机化
+from waleo_sim.randomization import (
+    VisualRandomization,
+    PhysicsRandomization,
+)
+
+# 工具函数
+from waleo_sim.utils import (
+    get_camera_intrinsics,
+    get_camera_extrinsics,
+    project_point_to_image,
+    compute_distance_reward,
+    compute_sparse_reward,
+)
+</code></pre>
+
+<h3 id="52">5.2 版本信息</h3>
+<pre class="codehilite"><code class="language-python">__version__ = &quot;0.1.0&quot;
+</code></pre>
+
+<hr />
+<h2 id="6">6. 与其他模块的接口</h2>
+<h3 id="61">6.1 依赖关系</h3>
+<table>
+<thead>
+<tr>
+<th>依赖模块</th>
+<th>使用的功能</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M02 配置模块</td>
+<td><code>EnvConfig</code> (待定义)</td>
+<td>环境配置</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62">6.2 被依赖关系</h3>
+<table>
+<thead>
+<tr>
+<th>依赖模块</th>
+<th>使用的功能</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M13 训练脚本</td>
+<td><code>make_env</code>, <code>make_vec_env</code></td>
+<td>创建训练环境</td>
+</tr>
+<tr>
+<td>M18 评估脚本</td>
+<td><code>make_env</code></td>
+<td>创建评估环境</td>
+</tr>
+<tr>
+<td>M04-M06 策略模块</td>
+<td>环境接口</td>
+<td>验证策略</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63">6.3 数据流</h3>
+<pre class="codehilite"><code>┌─────────────────────────────────────────────────────────────┐
+│                    训练/评估脚本                             │
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   M11: waleo-env                            │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │   任务层     │  │  包装器层    │  │  随机化层    │        │
+│  │ Push/Pick   │  │ Record/Gray │  │ Visual/Phys │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │  工厂层     │  │  后端层     │  │   基类层    │        │
+│  │ make_env   │  │ MuJoCo/Isaac│  │BaseEnv/etc. │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<hr />
+<h2 id="7">7. 使用场景</h2>
+<h3 id="71">7.1 仿真训练</h3>
+<pre class="codehilite"><code class="language-python">from waleo_env.tasks import make_vec_env
+from waleo_policy_act import ACTPolicy
+from torch.utils.data import DataLoader
+
+# 创建并行环境
+vec_env = make_vec_env(
+    task=&quot;pick_place&quot;,
+    num_envs=512,
+    simulation_backend=&quot;isaacgym&quot;,  # GPU 加速
+    asynchronous=True
+)
+
+# 加载策略
+policy = ACTPolicy.from_pretrained(&quot;waleo-act-pusht&quot;)
+
+# 训练循环
+obs, _ = vec_env.reset()
+for step in range(100000):
+    actions = policy.select_actions(obs)
+    obs, rewards, dones, _, infos = vec_env.step(actions)
+
+    # 收集数据用于离线训练
+    # ...
+
+vec_env.close()
+</code></pre>
+
+<h3 id="72">7.2 仿真验证</h3>
+<pre class="codehilite"><code class="language-python">from waleo_env.tasks import make_env
+from waleo_env.wrappers import RecordVideo
+from waleo_policy_diffusion import DiffusionPolicy
+
+# 创建环境并录制
+env = make_env(
+    task=&quot;push&quot;,
+    robot_type=&quot;so100&quot;,
+    render_mode=&quot;rgb_array&quot;
+)
+env = RecordVideo(env, video_folder=&quot;./eval_videos&quot;)
+
+# 加载训练好的策略
+policy = DiffusionPolicy.from_pretrained(&quot;./checkpoints/push_model&quot;)
+
+# 评估
+success_count = 0
+for episode in range(50):
+    obs, info = env.reset()
+    for step in range(500):
+        action = policy.select_action(obs)
+        obs, reward, terminated, truncated, info = env.step(action)
+
+        if terminated:
+            success_count += 1
+            break
+
+print(f&quot;Success rate: {success_count / 50}&quot;)
+env.close()
+</code></pre>
+
+<h3 id="73-sim-to-real">7.3 Sim-to-Real 迁移</h3>
+<pre class="codehilite"><code class="language-python"># 1. 在仿真中训练
+from waleo_env.tasks import make_env
+from waleo_env.randomization import VisualRandomization, PhysicsRandomization
+
+sim_env = make_env(&quot;pick_place&quot;, simulation_backend=&quot;mujoco&quot;)
+visual_rand = VisualRandomization(enable_lighting=True, enable_noise=True)
+physics_rand = PhysicsRandomization(randomize_mass=True, randomize_friction=True)
+
+# 使用域随机化训练
+for episode in range(10000):
+    physics_rand.randomize(sim_env)
+    obs, info = sim_env.reset()
+    # 训练...
+
+# 2. 在真实机器人上测试
+from waleo_robot import make_robot
+
+robot = make_robot(&quot;so100&quot;)
+
+for episode in range(10):
+    obs = robot.get_observation()
+    action = policy.select_action(obs)
+    robot.send_action(action)
+</code></pre>
+
+<hr />
+<h2 id="8">8. 测试策略</h2>
+<h3 id="81">8.1 单元测试</h3>
+<pre class="codehilite"><code class="language-python"># tests/test_tasks.py
+def test_push_env():
+    env = PushEnv(render_mode=None)
+    obs, info = env.reset(seed=0)
+    assert obs is not None
+    assert &quot;observation.state&quot; in obs
+
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+    assert reward is not None
+
+    env.close()
+
+# tests/test_backends.py
+def test_mujoco_backend():
+    backend = MuJoCoBackend(&quot;models/test.xml&quot;)
+    state = backend.get_state()
+    assert state is not None
+    backend.close()
+
+# tests/test_wrappers.py
+def test_record_video():
+    env = make_env(&quot;push&quot;, render_mode=&quot;rgb_array&quot;)
+    env = RecordVideo(env, video_folder=&quot;./test_videos&quot;)
+    obs, info = env.reset()
+    for _ in range(100):
+        obs, _, _, _, _ = env.step(env.action_space.sample())
+    env.close()
+    # 检查视频文件是否生成
+</code></pre>
+
+<h3 id="82">8.2 测试覆盖率目标</h3>
+<ul>
+<li>核心功能：&gt; 85%</li>
+<li>边界情况：&gt; 75%</li>
+<li>总体：&gt; 80%</li>
+</ul>
+<hr />
+<h2 id="9">9. 性能考虑</h2>
+<h3 id="91">9.1 性能目标</h3>
+<ul>
+<li>单个环境 step: &lt; 10ms (MuJoCo)</li>
+<li>并行环境 (512 envs) step: &lt; 50ms (Isaac Gym)</li>
+<li>渲染 (640x480): &lt; 5ms/帧</li>
+</ul>
+<h3 id="92">9.2 优化策略</h3>
+<ul>
+<li>使用 GPU 加速仿真（Isaac Gym）</li>
+<li>批量渲染多个环境</li>
+<li>延迟渲染（仅训练时渲染）</li>
+<li>使用共享内存减少数据拷贝</li>
+</ul>
+<hr />
+<h2 id="10">10. 依赖项</h2>
+<h3 id="101">10.1 核心依赖（必需）</h3>
+<pre class="codehilite"><code class="language-toml">[tool.poetry.dependencies]
+python = &quot;^3.9&quot;
+numpy = &quot;^1.24.0&quot;
+gymnasium = &quot;^0.29.0&quot;
+waleo-config = { path = &quot;../waleo-config&quot;, develop = true }
+</code></pre>
+
+<h3 id="102">10.2 仿真后端（至少需要一种）</h3>
+<pre class="codehilite"><code class="language-toml">[tool.poetry.extras]
+mujoco = [&quot;mujoco &gt;= 3.0.0&quot;]
+isaacgym = [&quot;isaacgym&quot;]
+pybullet = [&quot;pybullet &gt;= 3.2.0&quot;]
+sapien = [&quot;sapien&quot;]
+</code></pre>
+
+<h3 id="103">10.3 可选依赖</h3>
+<pre class="codehilite"><code class="language-toml">video = [&quot;opencv-python &gt;= 4.8.0&quot;]
+</code></pre>
+
+<h3 id="104">10.4 开发依赖</h3>
+<pre class="codehilite"><code class="language-toml">[tool.poetry.dev-dependencies]
+pytest = &quot;^7.4.0&quot;
+pytest-cov = &quot;^4.1.0&quot;
+black = &quot;^23.0.0&quot;
+mypy = &quot;^1.5.0&quot;
+</code></pre>
+
+<hr />
+<h2 id="11">11. 兼容性</h2>
+<h3 id="111-python">11.1 Python 版本</h3>
+<ul>
+<li>最低：Python 3.9</li>
+<li>测试：3.9, 3.10, 3.11</li>
+</ul>
+<h3 id="112">11.2 平台支持</h3>
+<ul>
+<li>Linux: ✅ 完全支持（推荐）</li>
+<li>macOS: ⚠️ 部分支持（MuJoCo 可以，Isaac Gym 不支持）</li>
+<li>Windows: ⚠️ 部分支持（PyBullet 可以）</li>
+</ul>
+<h3 id="113">11.3 仿真后端支持</h3>
+<table>
+<thead>
+<tr>
+<th>后端</th>
+<th>Linux</th>
+<th>macOS</th>
+<th>Windows</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MuJoCo</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>推荐</td>
+</tr>
+<tr>
+<td>Isaac Gym</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>需要 NVIDIA GPU</td>
+</tr>
+<tr>
+<td>PyBullet</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>开源</td>
+</tr>
+<tr>
+<td>SAPIEN</td>
+<td>✅</td>
+<td>⚠️</td>
+<td>❌</td>
+<td>需要渲染支持</td>
+</tr>
+<tr>
+<td>ManiSkill</td>
+<td>✅</td>
+<td>⚠️</td>
+<td>❌</td>
+<td>需要 NVIDIA GPU (推荐)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12">12. 文件大小估算</h2>
+<table>
+<thead>
+<tr>
+<th>文件/目录</th>
+<th>估计行数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>base/base.py</code></td>
+<td>~150</td>
+<td>Gym 兼容的环境基类</td>
+</tr>
+<tr>
+<td><code>base/wrapper.py</code></td>
+<td>~200</td>
+<td>环境包装器基类</td>
+</tr>
+<tr>
+<td><code>base/vector.py</code></td>
+<td>~180</td>
+<td>向量化环境基类</td>
+</tr>
+<tr>
+<td><code>base/robot_env.py</code></td>
+<td>~200</td>
+<td>机器人环境基类</td>
+</tr>
+<tr>
+<td><code>tasks/push.py</code></td>
+<td>~180</td>
+<td>推任务</td>
+</tr>
+<tr>
+<td><code>tasks/pick_place.py</code></td>
+<td>~220</td>
+<td>抓取放置任务</td>
+</tr>
+<tr>
+<td><code>tasks/reach.py</code></td>
+<td>~120</td>
+<td>到达任务</td>
+</tr>
+<tr>
+<td><code>tasks/factory.py</code></td>
+<td>~100</td>
+<td>工厂函数</td>
+</tr>
+<tr>
+<td><code>backends/mujoco.py</code></td>
+<td>~250</td>
+<td>MuJoCo 后端</td>
+</tr>
+<tr>
+<td><code>backends/isaacgym.py</code></td>
+<td>~300</td>
+<td>Isaac Gym 后端</td>
+</tr>
+<tr>
+<td><code>backends/pybullet.py</code></td>
+<td>~180</td>
+<td>PyBullet 后端</td>
+</tr>
+<tr>
+<td><code>backends/maniskill.py</code></td>
+<td>~280</td>
+<td>ManiSkill 后端</td>
+</tr>
+<tr>
+<td><code>wrappers/recorder.py</code></td>
+<td>~100</td>
+<td>录制包装器</td>
+</tr>
+<tr>
+<td><code>wrappers/grayscale.py</code></td>
+<td>~60</td>
+<td>灰度包装器</td>
+</tr>
+<tr>
+<td><code>wrappers/resize.py</code></td>
+<td>~60</td>
+<td>缩放包装器</td>
+</tr>
+<tr>
+<td><code>randomization/visual.py</code></td>
+<td>~150</td>
+<td>视觉随机化</td>
+</tr>
+<tr>
+<td><code>randomization/physics.py</code></td>
+<td>~120</td>
+<td>物理随机化</td>
+</tr>
+<tr>
+<td><code>utils/camera.py</code></td>
+<td>~100</td>
+<td>相机工具</td>
+</tr>
+<tr>
+<td><code>utils/reward.py</code></td>
+<td>~80</td>
+<td>奖励计算</td>
+</tr>
+<tr>
+<td><code>__init__.py</code></td>
+<td>~50</td>
+<td>导出接口</td>
+</tr>
+<tr>
+<td><strong>总计</strong></td>
+<td><strong>~3080</strong></td>
+<td>不含测试</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="13">13. 实现优先级</h2>
+<h3 id="phase-1">Phase 1: 核心功能（必须）</h3>
+<ol>
+<li><code>base/base.py</code> - Gym 兼容的环境基类</li>
+<li><code>base/wrapper.py</code> - 环境包装器基类</li>
+<li><code>base/vector.py</code> - 向量化环境基类</li>
+<li><code>base/robot_env.py</code> - 机器人环境基类</li>
+<li><code>tasks/factory.py</code> - 工厂函数</li>
+<li><code>backends/mujoco.py</code> - MuJoCo 后端</li>
+</ol>
+<h3 id="phase-2">Phase 2: 任务实现（必须）</h3>
+<ol>
+<li><code>tasks/push.py</code> - 推任务</li>
+<li><code>tasks/pick_place.py</code> - 抓取放置任务</li>
+<li><code>tasks/reach.py</code> - 到达任务</li>
+</ol>
+<h3 id="phase-3">Phase 3: 扩展功能（推荐）</h3>
+<ol>
+<li><code>wrappers/recorder.py</code> - 录制包装器</li>
+<li><code>randomization/physics.py</code> - 物理随机化</li>
+<li><code>randomization/visual.py</code> - 视觉随机化</li>
+</ol>
+<h3 id="phase-4">Phase 4: 高级功能（可选）</h3>
+<ol>
+<li><code>backends/isaacgym.py</code> - Isaac Gym 后端（大规模并行）</li>
+<li><code>backends/maniskill.py</code> - ManiSkill 后端（专业机器人操作）</li>
+<li><code>backends/pybullet.py</code> - PyBullet 后端</li>
+<li><code>utils/</code> - 工具函数</li>
+</ol>
+<hr />
+<h2 id="14">14. 迁移指南</h2>
+<p>从原始 LeRobot 迁移到新模块：</p>
+<pre class="codehilite"><code class="language-python"># 原始代码
+from lerobot.common.envs import make_env
+from lerobot.common.policies.utils import get_device
+
+# 新代码
+from waleo_env.tasks import make_env
+from waleo_utils.device import get_device
+
+# API 基本兼容，主要变化：
+# 1. 导入路径从 lerobot 改为 waleo
+# 2. 环境创建使用统一的 make_env 函数
+# 3. 支持更多仿真后端
+</code></pre>
+
+<hr />
+<h2 id="15">15. 未来扩展</h2>
+<h3 id="151">15.1 可能的扩展</h3>
+<ul>
+<li>支持更多仿真后端（WebGPU, Unity ML-Agents）</li>
+<li>预训练环境嵌入</li>
+<li>自动课程学习</li>
+<li>多任务学习环境</li>
+<li>人机协作环境</li>
+</ul>
+<h3 id="152">15.2 版本计划</h3>
+<ul>
+<li>v0.1.0: 基础功能实现（MuJoCo 后端 + 基本任务）</li>
+<li>v0.2.0: Isaac Gym 支持（大规模并行）</li>
+<li>v0.3.0: ManiSkill 支持（专业机器人操作仿真）</li>
+<li>v0.4.0: 域随机化和 Sim-to-Real 工具</li>
+</ul>
+<hr />
+<h2 id="16">16. 变更日志</h2>
+<h3 id="v011-2026-01-08">v0.1.1 (2026-01-08)</h3>
+<ul>
+<li>将 Gym/Gymnasium 兼容的环境基类（BaseEnv, VectorEnv, EnvWrapper）从 M01 移至 M11</li>
+<li>移除对 M01 的依赖（仅保留 M02 配置依赖）</li>
+<li>添加 Gym/Gymnasium 作为核心依赖</li>
+<li>优化模块职责划分，M11 现在包含完整的环境抽象层</li>
+<li>模块名改为"仿真基类模块"，包名改为 <code>waleo-sim</code></li>
+</ul>
+<h3 id="v010-2026-01-08">v0.1.0 (2026-01-08)</h3>
+<ul>
+<li>初始设计</li>
+<li>定义核心环境类和任务</li>
+<li>支持多种仿真后端（MuJoCo, Isaac Gym, PyBullet, SAPIEN）</li>
+<li><strong>添加 ManiSkill 后端支持</strong></li>
+<li>添加域随机化支持</li>
+<li>支持 Sim-to-Real 迁移</li>
+</ul>
+</body>
+</html>

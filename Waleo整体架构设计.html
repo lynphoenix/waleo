@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waleo整体架构设计.md</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        h3 { font-size: 1.25em; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #f6f8fa;
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        table th {
+            background: #f4f4f4;
+            font-weight: 600;
+        }
+        blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 16px;
+            color: #666;
+            margin: 20px 0;
+        }
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+<h1 id="waleo">Waleo 整体架构设计</h1>
+<blockquote>
+<p>基于 lerobot 代码库分析，重构为 waleo 项目，拆分为独立的子模块</p>
+<p>创建时间：2026-01-08
+最后更新：2026-01-08 (项目改名为 waleo，添加 M01/M11/M21 设计，新增 ManiSkill 支持，将仿真环境基类从 M01 移至 M11)</p>
+</blockquote>
+<hr />
+<h2 id="_1">项目概述</h2>
+<p><strong>Waleo</strong> 是一个机器人学习框架，专注于模仿学习和策略执行。本项目从 LeRobot 重构而来，采用模块化设计，支持：</p>
+<ul>
+<li><strong>异步推理架构</strong>：机器人本体（MPS/CPU）通过 RPC 通信连接到 CUDA 服务器进行推理</li>
+<li><strong>多机多卡训练</strong>：支持 NCCL 单机多卡/多机多卡分布式训练</li>
+<li><strong>仿真训练</strong>：支持 ManiSkill、MuJoCo、Isaac Gym 等多种仿真环境</li>
+<li><strong>Sim-to-Real</strong>：提供域随机化和迁移工具</li>
+</ul>
+<hr />
+<h2 id="_2">模块依赖关系图</h2>
+<pre class="codehilite"><code>┌─────────────────────────────────────────────────────────────────┐
+│                    应用层 (Application Layer)                   │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌──────────┐  │
+│  │ 训练脚本    │  │ 评估脚本    │  │ 仿真训练    │  │ 远程推理  │  │
+│  │  (M13)   │  │  (M18)   │  │            │  │  (M21)   │  │
+│  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘  └────┬─────┘  │
+└────────┼───────────────┼───────────────┼───────────────┼────────┘
+         │               │               │               │
+         ▼               ▼               ▼               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    核心层 (Core Layer)                          │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
+│  │ 策略模块  │  │ 数据集模块 │  │ 环境模块  │  │ 配置模块  │       │
+│  │ (M04-06) │  │  (M03)   │  │  (M11)   │  │  (M02)   │       │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘       │
+└─────────────────────────────────────────────────────────────────┘
+         │               │               │
+         ▼               ▼               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    基础设施层 (Infrastructure Layer)            │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  M01: waleo-utils                                       │  │
+│  │                                                          │  │
+│  │  • 设备管理 (CUDA/MPS/CPU)                             │  │
+│  │  • 分布式训练 (NCCL 单机/多机多卡)                      │  │
+│  │  • RPC 基础设施 (Client/Server)                        │  │
+│  │  • 日志 / 随机数 / 时间测量                             │  │
+│  │  • 文件 I/O                                            │  │
+│  │                                                          │  │
+│  │  被所有上层模块依赖                                     │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    硬件抽象层 (Hardware Layer)                  │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
+│  │ 机器人模块 │  │ 电机模块  │  │ 相机模块  │  │ 遥操作模块 │       │
+│  │  (M09)   │  │  (M07)   │  │  (M08)   │  │  (M10)   │       │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘       │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<p><strong>模块分布说明：</strong>
+- <strong>M01 (基础设施)</strong>: 被所有模块依赖，提供底层能力
+- <strong>M21 (机器人通信)</strong>: 独立服务，用于异步推理场景</p>
+<hr />
+<h2 id="_3">异步推理架构图</h2>
+<pre class="codehilite"><code>┌─────────────────────────────────────────────────────────────┐
+│              CUDA 训练/推理服务器                             │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │  分布式训练 (NCCL 单机/多机多卡)                       │    │
+│  │  训练策略模型                                          │    │
+│  │  模型推理服务 (M21 InferenceClient)                    │    │
+│  └───────────────────┬────────────────────────────────┘    │
+│                      │ 网络提供推理服务 (M01 RPC)              │
+└──────────────────────┼──────────────────────────────────────┘
+                       │ RPC/TCP
+┌──────────────────────┼──────────────────────────────────────┐
+│                      ▼                                       │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │          机器人本体 (MPS/CPU)                       │    │
+│  │  ┌──────────────────────────────────────────────┐  │    │
+│  │  │ 1. 采集观察数据 (observation)                  │  │    │
+│  │  └────────────┬─────────────────────────────────┘  │    │
+│  │               │                                      │    │
+│  │               ▼                                      │    │
+│  │  ┌──────────────────────────────────────────────┐  │    │
+│  │  │ 2. 发送推理请求 (obs) → 服务器 (M21)          │  │    │
+│  │  └────────────┬─────────────────────────────────┘  │    │
+│  │               │                                      │    │
+│  │               ▼                                      │    │
+│  │  ┌──────────────────────────────────────────────┐  │    │
+│  │  │ 3. 接收 action chunk ← 服务器                │  │    │
+│  │  └────────────┬─────────────────────────────────┘  │    │
+│  │               │                                      │    │
+│  │               ▼                                      │    │
+│  │  ┌──────────────────────────────────────────────┐  │    │
+│  │  │ 4. 执行 action chunk (future N steps)       │  │    │
+│  │  └──────────────────────────────────────────────┘  │    │
+│  └────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<hr />
+<h2 id="_4">设计进度总览</h2>
+<h3 id="520">已完成设计 (5/20)</h3>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>名称</th>
+<th>包名</th>
+<th>设计文档</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M01</td>
+<td>基础设施模块</td>
+<td>waleo-utils</td>
+<td><a href="M01-基础设施模块设计.md">M01-基础设施模块设计.md</a></td>
+<td><a href="M01-基础设施模块设计.html">HTML</a></td>
+</tr>
+<tr>
+<td>M02</td>
+<td>配置管理模块</td>
+<td>waleo-config</td>
+<td><a href="M02-配置管理模块设计.md">M02-配置管理模块设计.md</a></td>
+<td><a href="M02-配置管理模块设计.html">HTML</a></td>
+</tr>
+<tr>
+<td>M03</td>
+<td>数据集模块</td>
+<td>waleo-dataset</td>
+<td><a href="M03-数据集模块设计.md">M03-数据集模块设计.md</a></td>
+<td><a href="M03-数据集模块设计.html">HTML</a></td>
+</tr>
+<tr>
+<td>M11</td>
+<td>仿真基类模块</td>
+<td>waleo-sim</td>
+<td><a href="M11-仿真基类模块设计.md">M11-仿真基类模块设计.md</a></td>
+<td><a href="M11-仿真基类模块设计.html">HTML</a></td>
+</tr>
+<tr>
+<td>M21</td>
+<td>机器人通信服务</td>
+<td>waleo-robot-comm</td>
+<td><a href="M21-机器人通信服务模块设计.md">M21-机器人通信服务模块设计.md</a></td>
+<td><a href="M21-机器人通信服务模块设计.html">HTML</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="1419">待设计模块 (14/19)</h3>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>名称</th>
+<th>优先级</th>
+<th>依赖</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M04</td>
+<td>策略接口模块</td>
+<td>P0</td>
+<td>M01, M02</td>
+</tr>
+<tr>
+<td>M05</td>
+<td>ACT策略模块</td>
+<td>P0</td>
+<td>M04, M03</td>
+</tr>
+<tr>
+<td>M06</td>
+<td>Diffusion策略模块</td>
+<td>P0</td>
+<td>M04, M03</td>
+</tr>
+<tr>
+<td>M07</td>
+<td>电机控制模块</td>
+<td>P1</td>
+<td>M01</td>
+</tr>
+<tr>
+<td>M08</td>
+<td>相机模块</td>
+<td>P1</td>
+<td>M01</td>
+</tr>
+<tr>
+<td>M09</td>
+<td>机器人模块</td>
+<td>P1</td>
+<td>M07, M08</td>
+</tr>
+<tr>
+<td>M10</td>
+<td>遥操作模块</td>
+<td>P1</td>
+<td>M09</td>
+</tr>
+<tr>
+<td>M13</td>
+<td>训练脚本模块</td>
+<td>P1</td>
+<td>M01, M02, M03, M04, M11</td>
+</tr>
+<tr>
+<td>M14</td>
+<td>其他策略模块</td>
+<td>P2</td>
+<td>M04, M03</td>
+</tr>
+<tr>
+<td>M15</td>
+<td>可视化模块</td>
+<td>P2</td>
+<td>M03</td>
+</tr>
+<tr>
+<td>M16</td>
+<td>模型工具模块</td>
+<td>P2</td>
+<td>M01</td>
+</tr>
+<tr>
+<td>M17</td>
+<td>传输模块</td>
+<td>P2</td>
+<td>M01</td>
+</tr>
+<tr>
+<td>M18</td>
+<td>评估脚本模块</td>
+<td>P3</td>
+<td>M04, M11</td>
+</tr>
+<tr>
+<td>M19</td>
+<td>工具脚本模块</td>
+<td>P3</td>
+<td>M07, M08</td>
+</tr>
+<tr>
+<td>M20</td>
+<td>基准测试模块</td>
+<td>P3</td>
+<td>M04, M11, M18</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_5">需求池详情</h2>
+<h3 id="p0-">【P0-核心基础】必须优先实现</h3>
+<p>| ID | 模块名称 | 功能描述 | 依赖 | 规模估算 | 状态 |
+|---|---|---|---|---|---|---|
+| <strong>M01</strong> | <strong>基础设施模块</strong> (waleo-utils) | 设备管理、分布式训练、RPC通信、日志、随机数、常量 | 无 | 中 | ✅ 设计完成 | <a href="M01-基础设施模块设计.md">M01-基础设施模块设计.md</a> |
+| <strong>M02</strong> | <strong>配置管理模块</strong> (waleo-config) | 配置类定义、参数解析、验证 | M01 | 小 | ✅ 设计完成 | <a href="M02-配置管理模块设计.md">M02-配置管理模块设计.md</a> |
+| <strong>M03</strong> | <strong>数据集模块</strong> (waleo-dataset) | 数据加载、预处理、采样、统计、视频编解码 | M01, M02 | 中 | ✅ 设计完成 | <a href="M03-数据集模块设计.md">M03-数据集模块设计.md</a> |</p>
+<h3 id="p0-_1">【P0-策略核心】算法实现核心</h3>
+<p>| ID | 模块名称 | 功能描述 | 依赖 | 规模估算 | 状态 |
+|---|---|---|---|---|---|---|
+| <strong>M04</strong> | <strong>策略接口模块</strong> (waleo-policy-base) | 策略抽象基类、工厂模式、标准化 | M01, M02 | 小 | ⬜ 待开始 | - |
+| <strong>M05</strong> | <strong>ACT策略模块</strong> (waleo-policy-act) | ACT算法实现 | M04, M03 | 中 | ⬜ 待开始 | - |
+| <strong>M06</strong> | <strong>Diffusion策略模块</strong> (waleo-policy-diffusion) | Diffusion Policy实现 | M04, M03 | 中 | ⬜ 待开始 | - |</p>
+<h3 id="p1-">【P1-硬件层】机器人硬件接口</h3>
+<p>| ID | 模块名称 | 功能描述 | 依赖 | 规模估算 | 状态 |
+|---|---|---|---|---|---|---|
+| <strong>M07</strong> | <strong>电机控制模块</strong> (waleo-hw-motor) | 电机总线抽象、具体驱动实现 | M01 | 中 | ⬜ 待开始 | - |
+| <strong>M08</strong> | <strong>相机模块</strong> (waleo-hw-camera) | 相机抽象、OpenCV/RealSense实现 | M01 | 小 | ⬜ 待开始 | - |
+| <strong>M09</strong> | <strong>机器人模块</strong> (waleo-robot) | 机器人抽象、具体机器人配置 | M07, M08 | 中 | ⬜ 待开始 | - |
+| <strong>M10</strong> | <strong>遥操作模块</strong> (waleo-teleop) | 遥操作设备接口 | M09 | 小 | ⬜ 待开始 | - |</p>
+<h3 id="p1-_1">【P1-环境与训练】仿真与训练</h3>
+<p>| ID | 模块名称 | 功能描述 | 依赖 | 规模估算 | 状态 |
+|---|---|---|---|---|---|---|
+| <strong>M11</strong> | <strong>仿真基类模块</strong> (waleo-sim) | Gym环境基类、机器人环境基类、任务定义、仿真后端接口（含 ManiSkill） | M02 | 中 | ✅ 设计完成 | <a href="M11-仿真基类模块设计.md">M11-仿真基类模块设计.md</a> |
+| <strong>M13</strong> | <strong>训练脚本模块</strong> (waleo-train) | 训练循环、检查点管理、优化器、学习率调度 | M01, M02, M03, M04, M11 | 中 | ⬜ 待开始 | - |</p>
+<h3 id="p2-">【P2-扩展功能】可选功能</h3>
+<p>| ID | 模块名称 | 功能描述 | 依赖 | 规模估算 | 状态 |
+|---|---|---|---|---|---|---|---|
+| <strong>M14</strong> | <strong>其他策略模块</strong> (waleo-policy-others) | TDMPC, VQ-BeT, SAC等 | M04, M03 | 大 | ⬜ 待开始 | - |
+| <strong>M15</strong> | <strong>可视化模块</strong> (waleo-viz) | 数据集可视化、HTML生成 | M03 | 中 | ⬜ 待开始 | - |
+| <strong>M16</strong> | <strong>模型工具模块</strong> (waleo-model) | 运动学计算等 | M01 | 小 | ⬜ 待开始 | - |
+| <strong>M17</strong> | <strong>传输模块</strong> (waleo-transport) | 分布式RL通信（可选） | M01 | 小 | ⬜ 待开始 | - |
+| <strong>M21</strong> | <strong>机器人通信服务模块</strong> (waleo-robot-comm) | 异步推理通信、RPC服务 | M01, M09 | 中 | ✅ 设计完成 | <a href="M21-机器人通信服务模块设计.md">M21-机器人通信服务模块设计.md</a> |</p>
+<h3 id="p3-">【P3-辅助工具】测试与示例</h3>
+<p>| ID | 模块名称 | 功能描述 | 依赖 | 规模估算 | 状态 |
+|---|---|---|---|---|---|---|---|
+| <strong>M18</strong> | <strong>评估脚本模块</strong> (waleo-eval) | 策略评估、指标计算 | M04, M11 | 小 | ⬜ 待开始 | - |
+| <strong>M19</strong> | <strong>工具脚本模块</strong> (waleo-scripts) | 校准、相机检测、端口检测 | M07, M08 | 小 | ⬜ 待开始 | - |
+| <strong>M20</strong> | <strong>基准测试模块</strong> (waleo-bench) | 性能基准测试 | M04, M11, M18 | 小 | ⬜ 待开始 | - |</p>
+<hr />
+<h2 id="_6">模块拆分建议的目录结构</h2>
+<pre class="codehilite"><code>waleo/
+├── waleo-utils/          # M01 - 基础设施
+│   ├── waleo_utils/
+│   │   ├── __init__.py
+│   │   ├── device/              # 设备管理
+│   │   │   ├── manager.py       # 设备选择和管理
+│   │   │   └── distributed.py   # 分布式设备（NCCL）
+│   │   ├── distributed/         # 分布式训练支持
+│   │   │   ├── launcher.py
+│   │   │   ├── reducer.py
+│   │   │   └── state.py
+│   │   ├── communication/       # 通信基础设施
+│   │   │   ├── base.py
+│   │   │   ├── client.py
+│   │   │   ├── server.py
+│   │   │   ├── serialization.py
+│   │   │   └── protocol.py
+│   │   ├── logging/
+│   │   ├── random/
+│   │   ├── timing/
+│   │   ├── io/
+│   │   └── constants.py
+│   ├── tests/
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-config/         # M02 - 配置管理
+│   ├── waleo_config/
+│   │   ├── base/
+│   │   │   ├── types.py
+│   │   │   └── protocol.py
+│   │   ├── dataset/
+│   │   ├── training/
+│   │   ├── eval/
+│   │   ├── parser/
+│   │   │   ├── cli.py
+│   │   │   └── plugin.py
+│   │   └── validation/
+│   ├── tests/
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-dataset/        # M03 - 数据集
+│   ├── waleo_dataset/
+│   │   ├── core/
+│   │   │   ├── dataset.py
+│   │   │   ├── metadata.py
+│   │   │   └── buffer.py
+│   │   ├── video/
+│   │   │   ├── decoder.py
+│   │   │   ├── encoder.py
+│   │   │   └── backend.py
+│   │   ├── sampling/
+│   │   ├── transforms/
+│   │   ├── stats/
+│   │   ├── utils/
+│   │   └── factory.py
+│   ├── tests/
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-policy-base/    # M04 - 策略接口
+│   ├── waleo_policy/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── factory.py
+│   │   └── normalize.py
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-policy-act/     # M05 - ACT策略
+│   ├── waleo_policy_act/
+│   │   ├── __init__.py
+│   │   └── modeling_act.py
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-policy-diffusion/ # M06 - Diffusion策略
+│   ├── waleo_policy_diffusion/
+│   │   ├── __init__.py
+│   │   └── modeling_diffusion.py
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-hw-motor/       # M07 - 电机控制
+│   ├── waleo_motor/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── dynamixel/
+│   │   │   ├── bus.py
+│   │   │   └── motor.py
+│   │   └── feetech/
+│   │       ├── bus.py
+│   │       └── motor.py
+│   ├── tests/
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-hw-camera/      # M08 - 相机
+│   ├── waleo_camera/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── opencv.py
+│   │   └── realsense.py
+│   ├── tests/
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-robot/          # M09 - 机器人
+│   ├── waleo_robot/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── robots/
+│   │   │   ├── so100.py
+│   │   │   ├── koch.py
+│   │   │   ├── aloha.py
+│   │   │   └── ...
+│   │   └── utils.py
+│   ├── tests/
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-teleop/         # M10 - 遥操作
+│   ├── waleo_teleop/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── leader/
+│   │   │   ├── so100.py
+│   │   │   └── koch.py
+│   │   └── gamepad.py
+│   ├── tests/
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-sim/            # M11 - 仿真基类
+│   ├── waleo_sim/
+│   │   ├── __init__.py
+│   │   ├── base/               # Gym环境基类
+│   │   │   ├── base.py
+│   │   │   ├── wrapper.py
+│   │   │   └── vector.py
+│   │   ├── robot/              # 机器人环境基类
+│   │   │   └── robot_env.py
+│   │   ├── tasks/
+│   │   │   ├── push.py
+│   │   │   ├── pick_place.py
+│   │   │   ├── reach.py
+│   │   │   └── factory.py
+│   │   ├── backends/
+│   │   │   ├── mujoco.py
+│   │   │   ├── isaacgym.py
+│   │   │   ├── pybullet.py
+│   │   │   ├── sapien.py
+│   │   │   └── maniskill.py    # ← ManiSkill 支持
+│   │   ├── wrappers/
+│   │   │   ├── recorder.py
+│   │   │   ├── grayscale.py
+│   │   │   └── resize.py
+│   │   ├── randomization/
+│   │   │   ├── visual.py
+│   │   │   ├── physics.py
+│   │   │   └── dynamics.py
+│   │   └── utils/
+│   ├── tests/
+│   ├── examples/
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-train/          # M13 - 训练脚本
+│   ├── waleo_train/
+│   │   ├── __init__.py
+│   │   ├── train.py
+│   │   ├── optimizer.py       # 优化器
+│   │   └── scheduler.py       # 学习率调度器
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-policy-others/  # M14 - 其他策略
+│   ├── waleo_policy_others/
+│   │   ├── tdmpc/
+│   │   ├── vqbet/
+│   │   └── sac/
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-viz/            # M15 - 可视化
+│   ├── waleo_viz/
+│   │   ├── __init__.py
+│   │   ├── dataset_viz.py
+│   │   └── html_gen.py
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-model/          # M16 - 模型工具
+│   ├── waleo_model/
+│   │   ├── __init__.py
+│   │   └── kinematics.py
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-transport/      # M17 - 传输模块
+│   ├── waleo_transport/
+│   │   ├── __init__.py
+│   │   └── comm.py
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-robot-comm/     # M21 - 机器人通信服务
+│   ├── waleo_robot_comm/
+│   │   ├── __init__.py
+│   │   ├── robot/
+│   │   │   ├── service.py
+│   │   │   ├── handler.py
+│   │   │   └── streamer.py
+│   │   ├── server/
+│   │   │   ├── client.py
+│   │   │   ├── pool.py
+│   │   │   └── balancer.py
+│   │   ├── protocol/
+│   │   │   ├── messages.py
+│   │   │   └── codec.py
+│   │   ├── middleware/
+│   │   │   ├── auth.py
+│   │   │   ├── compression.py
+│   │   │   └── logging.py
+│   │   └── utils/
+│   ├── tests/
+│   ├── examples/
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-eval/           # M18 - 评估脚本
+│   ├── waleo_eval/
+│   │   ├── __init__.py
+│   │   └── eval.py
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── waleo-scripts/        # M19 - 工具脚本
+│   ├── waleo_scripts/
+│   │   ├── __init__.py
+│   │   ├── calibrate.py
+│   │   ├── find_cameras.py
+│   │   └── setup_motors.py
+│   ├── pyproject.toml
+│   └── README.md
+│
+└── waleo-bench/          # M20 - 基准测试
+    ├── waleo_bench/
+    │   ├── __init__.py
+    │   └── benchmark.py
+    ├── pyproject.toml
+    └── README.md
+</code></pre>
+
+<hr />
+<h2 id="_7">实施路线图</h2>
+<h3 id="1-2">阶段一：基础层搭建（第1-2周）</h3>
+<ul>
+<li>[x] M01 基础设施模块（设计完成）</li>
+<li>[x] M02: 配置管理模块（设计完成）</li>
+<li>[x] M03: 数据集模块（设计完成）</li>
+</ul>
+<p><strong>交付物：</strong>
+- ✅ 设计文档
+- ⬜ 可独立安装的基础工具包
+- ⬜ 配置解析和验证系统
+- ⬜ 数据集加载和预处理功能</p>
+<h3 id="2-3">阶段二：通信与仿真（第2-3周）</h3>
+<ul>
+<li>[x] M11: 仿真环境模块（设计完成，含 ManiSkill）</li>
+<li>[x] M21: 机器人通信服务（设计完成）</li>
+</ul>
+<p><strong>交付物：</strong>
+- ✅ 设计文档
+- ⬜ RPC 通信基础设施
+- ⬜ 仿真环境支持（ManiSkill, MuJoCo, Isaac Gym）
+- ⬜ 异步推理架构</p>
+<h3 id="3-5">阶段三：策略核心（第3-5周）</h3>
+<ul>
+<li>[ ] M04: 策略接口模块</li>
+<li>[ ] M05: ACT策略模块</li>
+<li>[ ] M06: Diffusion策略模块</li>
+</ul>
+<p><strong>交付物：</strong>
+- 策略基类和工厂模式
+- ACT 算法实现
+- Diffusion Policy 算法实现
+- 策略训练和推理接口</p>
+<h3 id="5-7">阶段四：硬件层（第5-7周）</h3>
+<ul>
+<li>[ ] M07: 电机控制模块</li>
+<li>[ ] M08: 相机模块</li>
+<li>[ ] M09: 机器人模块</li>
+<li>[ ] M10: 遥操作模块</li>
+</ul>
+<p><strong>交付物：</strong>
+- 电机总线抽象层
+- Dynamixel 和 Feetech 驱动
+- 相机接口（OpenCV/RealSense）
+- 至少一种机器人配置（如 SO-100）</p>
+<h3 id="7-9">阶段五：集成与测试（第7-9周）</h3>
+<ul>
+<li>[ ] M13: 训练脚本模块（含优化器、学习率调度）</li>
+<li>[ ] M18-M20: 评估与工具脚本</li>
+</ul>
+<p><strong>交付物：</strong>
+- 完整的训练流程
+- 策略评估工具
+- 硬件调试工具</p>
+<hr />
+<h2 id="_8">各模块详细说明</h2>
+<h3 id="m01-waleo-utils">M01 基础设施模块 (waleo-utils)</h3>
+<p><strong>主要功能：</strong>
+- 设备管理（CUDA/MPS/CPU 分层选择）
+- 分布式训练支持（NCCL 单机/多机多卡）
+- 通信基础设施（RPC Client/Server）
+- 日志记录（AverageMeter, MetricsTracker）
+- 随机数管理（种子设置、状态保存/恢复）
+- 时间测量（TimerManager）
+- 文件 I/O（视频保存、JSON 序列化）
+- 常量定义</p>
+<p><strong>关键特性：</strong>
+- 训练设备：仅 CUDA（通过 NCCL 支持多卡/多机）
+- 推理设备：CUDA &gt; MPS &gt; CPU
+- RPC 同步/异步/流式通信</p>
+<p><strong>设计文档：</strong> <a href="M01-基础设施模块设计.md">M01-基础设施模块设计.md</a></p>
+<hr />
+<h3 id="m02-waleo-config">M02: 配置管理模块 (waleo-config)</h3>
+<p><strong>主要功能：</strong>
+- 配置数据类定义（Dataset, Training, Eval）
+- 类型系统（FeatureType, NormalizationMode）
+- 命令行参数解析
+- 配置验证
+- 插件系统</p>
+<p><strong>设计文档：</strong> <a href="M02-配置管理模块设计.md">M02-配置管理模块设计.md</a></p>
+<hr />
+<h3 id="m03-waleo-dataset">M03: 数据集模块 (waleo-dataset)</h3>
+<p><strong>主要功能：</strong>
+- LeRobotDataset 实现
+- 视频编码/解码（mp4 格式）
+- EpisodeAwareSampler
+- 数据统计计算
+- 数据变换和归一化
+- 多数据集联合加载</p>
+<p><strong>设计文档：</strong> <a href="M03-数据集模块设计.md">M03-数据集模块设计.md</a></p>
+<hr />
+<h3 id="m11-waleo-sim">M11: 仿真基类模块 (waleo-sim)</h3>
+<p><strong>主要功能：</strong>
+- <strong>Gym环境基类</strong>（BaseEnv, VectorEnv, EnvWrapper）：提供与 Gym/Gymnasium 兼容的环境接口
+- <strong>机器人环境基类</strong>（RobotEnv）：扩展 BaseEnv，添加机器人特有的功能
+- <strong>任务定义</strong>：推任务、抓取放置、到达任务等
+- <strong>仿真后端支持</strong>：
+  - MuJoCo：快速物理仿真
+  - Isaac Gym：GPU 加速大规模并行
+  - PyBullet：开源免费
+  - SAPIEN：高质量渲染
+  - <strong>ManiSkill</strong>：专业机器人操作仿真（新增）
+- <strong>环境包装器</strong>：录制、灰度、缩放等
+- <strong>域随机化</strong>：视觉、物理、动力学随机化</p>
+<p><strong>ManiSkill 支持的任务：</strong>
+- PickCube：抓取立方体
+- PushCube：推动立方体
+- StackCube：堆叠立方体
+- PlugCharger：插入充电器
+- TurnFaucet：转动水龙头
+- OpenCabinetDrawer：打开抽屉</p>
+<p><strong>设计文档：</strong> <a href="M11-仿真环境模块设计.md">M11-仿真环境模块设计.md</a></p>
+<hr />
+<h3 id="m21-waleo-robot-comm">M21: 机器人通信服务模块 (waleo-robot-comm)</h3>
+<p><strong>主要功能：</strong>
+- 机器人端服务（RobotService）：运行在机器人上，接收推理请求
+- 服务器端客户端（InferenceClient）：连接到机器人，发送推理请求
+- 连接池和负载均衡：支持多机器人并行控制
+- 协议实现和编解码器
+- 中间件（认证、压缩、日志）</p>
+<p><strong>异步推理流程：</strong>
+1. 机器人采集观察 → 2. 发送到服务器 → 3. 服务器推理 → 4. 返回 action chunk → 5. 机器人执行</p>
+<p><strong>设计文档：</strong> <a href="M21-机器人通信服务模块设计.md">M21-机器人通信服务模块设计.md</a></p>
+<hr />
+<h2 id="_9">技术栈总结</h2>
+<h3 id="_10">核心依赖</h3>
+<ul>
+<li><strong>PyTorch</strong>: 深度学习框架</li>
+<li><strong>Gymnasium</strong>: 环境接口标准</li>
+<li><strong>Hugging Face</strong>: datasets, hub, safetensors</li>
+</ul>
+<h3 id="_11">仿真后端依赖</h3>
+<ul>
+<li><strong>MuJoCo</strong>: 快速物理仿真</li>
+<li><strong>Isaac Gym</strong>: GPU 加速大规模并行</li>
+<li><strong>PyBullet</strong>: 开源免费</li>
+<li><strong>SAPIEN</strong>: 高质量渲染</li>
+<li><strong>ManiSkill</strong>: 专业机器人操作（推荐）</li>
+</ul>
+<h3 id="_12">通信依赖</h3>
+<ul>
+<li><strong>asyncio</strong>: 异步 I/O</li>
+<li><strong>aiohttp</strong>: HTTP 客户端/服务器</li>
+<li><strong>zlib</strong>: 数据压缩</li>
+</ul>
+<h3 id="_13">硬件依赖</h3>
+<ul>
+<li><strong>dynamixel-sdk</strong>: Dynamixel 电机</li>
+<li><strong>pyrealsense2</strong>: RealSense 相机</li>
+<li><strong>opencv-python</strong>: 图像处理</li>
+</ul>
+<hr />
+<h2 id="_14">注意事项</h2>
+<ol>
+<li><strong>模块独立性</strong>: 每个模块应可独立安装和使用</li>
+<li><strong>向后兼容</strong>: 保持与原 LeRobot 的数据格式兼容</li>
+<li><strong>测试覆盖</strong>: 每个模块应有独立的测试套件</li>
+<li><strong>文档完善</strong>: 每个模块应有清晰的 API 文档</li>
+<li><strong>版本管理</strong>: 使用语义化版本号</li>
+</ol>
+<hr />
+<h2 id="_15">变更记录</h2>
+<table>
+<thead>
+<tr>
+<th>日期</th>
+<th>版本</th>
+<th>变更内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-01-08</td>
+<td>v1.0</td>
+<td>初始版本，完成代码库分析和模块划分</td>
+</tr>
+<tr>
+<td>2026-01-08</td>
+<td>v1.1</td>
+<td>项目改名为 waleo，添加 M01/M11/M21 设计文档</td>
+</tr>
+<tr>
+<td>2026-01-08</td>
+<td>v1.2</td>
+<td>M11 添加 ManiSkill 支持，更新整体架构图</td>
+</tr>
+<tr>
+<td>2026-01-08</td>
+<td>v1.3</td>
+<td>完整更新目录结构，统一包名为 waleo</td>
+</tr>
+<tr>
+<td>2026-01-08</td>
+<td>v1.4</td>
+<td>将仿真环境基类（BaseEnv, VectorEnv, EnvWrapper）从 M01 移至 M11，优化模块职责划分</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>
