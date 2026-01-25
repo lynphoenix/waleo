@@ -13,7 +13,7 @@ import numpy as np
 def test_config():
     """测试配置模块"""
     print("测试 waleo-config...")
-    from waleo.config import EnvConfig, CameraConfig
+    from waleo.sim import EnvConfig, CameraConfig
 
     # 测试 EnvConfig
     config = EnvConfig(
@@ -93,7 +93,7 @@ def test_simple_env():
     """测试简单的环境实现"""
     print("测试简单的环境实现...")
     from waleo.sim.base import BaseEnv
-    from waleo.config import EnvConfig
+    from waleo.sim import EnvConfig
 
     class Space:
         """简单的空间类"""

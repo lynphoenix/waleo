@@ -1,20 +1,25 @@
 # Waleo 整体架构设计
 
-> 基于 lerobot 代码库分析，重构为 waleo 项目，拆分为独立的子模块
+> 基于 lerobot 代码库分析，重构为 waleo 项目
 >
 > 创建时间：2026-01-08
-> 最后更新：2026-01-08 (项目改名为 waleo，添加 M01/M11/M21 设计，新增 ManiSkill 支持，将仿真环境基类从 M01 移至 M11)
+> 最后更新：2026-01-25 (采用统一包结构，config模块分布式架构，迁移至flat-layout)
 
 ---
 
 ## 项目概述
 
-**Waleo** 是一个机器人学习框架，专注于模仿学习和策略执行。本项目从 LeRobot 重构而来，采用模块化设计，支持：
+**Waleo** 是一个机器人学习框架，专注于模仿学习和策略执行。本项目从 LeRobot 重构而来，采用统一包的模块化设计，支持：
 
 - **异步推理架构**：机器人本体（MPS/CPU）通过 RPC 通信连接到 CUDA 服务器进行推理
 - **多机多卡训练**：支持 NCCL 单机多卡/多机多卡分布式训练
 - **仿真训练**：支持 ManiSkill、MuJoCo、Isaac Gym 等多种仿真环境
 - **Sim-to-Real**：提供域随机化和迁移工具
+
+**架构特点**：
+- **统一包结构**：采用单一 `waleo` 包，包含 `utils`、`config`、`sim` 等子模块
+- **分布式配置**：config 提供基础设施，领域配置由各模块自己管理
+- **Flat-layout**：简洁的目录结构，与 NumPy、Pandas 等主流项目一致
 
 ---
 
@@ -42,13 +47,17 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │                    基础设施层 (Infrastructure Layer)            │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │  M01: waleo-utils                                       │  │
+│  │  M01: waleo.utils (基础设施工具)                        │  │
 │  │                                                          │  │
 │  │  • 设备管理 (CUDA/MPS/CPU)                             │  │
 │  │  • 分布式训练 (NCCL 单机/多机多卡)                      │  │
 │  │  • RPC 基础设施 (Client/Server)                        │  │
 │  │  • 日志 / 随机数 / 时间测量                             │  │
 │  │  • 文件 I/O                                            │  │
+│  │                                                          │  │
+│  │  M02: waleo.config (配置管理基础设施)                   │  │
+│  │  • 配置协议和工具                                        │  │
+│  │  • 通用配置类 (DeviceConfig, LogConfig等)              │  │
 │  │                                                          │  │
 │  │  被所有上层模块依赖                                     │  │
 │  └──────────────────────────────────────────────────────────┘  │
@@ -199,21 +208,25 @@
 
 ---
 
-## 模块拆分建议的目录结构
+## 当前实现的目录结构
+
+**注意**：当前采用统一包结构（flat-layout），而非独立子包。
 
 ```
-waleo/
-├── waleo-utils/          # M01 - 基础设施
-│   ├── waleo_utils/
-│   │   ├── __init__.py
-│   │   ├── device/              # 设备管理
-│   │   │   ├── manager.py       # 设备选择和管理
-│   │   │   └── distributed.py   # 分布式设备（NCCL）
-│   │   ├── distributed/         # 分布式训练支持
+waleo/                          # 项目根目录
+├── waleo/                      # 主包（统一包）
+│   ├── __init__.py
+│   │
+│   ├── utils/                  # M01 - 基础设施工具
+│   │   ├── __init__.py         # 导出63个API
+│   │   ├── device/             # 设备管理
+│   │   │   ├── manager.py      # 设备选择和管理
+│   │   │   └── distributed.py  # 分布式设备（NCCL）
+│   │   ├── distributed/        # 分布式训练支持
 │   │   │   ├── launcher.py
 │   │   │   ├── reducer.py
 │   │   │   └── state.py
-│   │   ├── communication/       # 通信基础设施
+│   │   ├── communication/      # 通信基础设施
 │   │   │   ├── base.py
 │   │   │   ├── client.py
 │   │   │   ├── server.py
@@ -223,130 +236,76 @@ waleo/
 │   │   ├── random/
 │   │   ├── timing/
 │   │   ├── io/
-│   │   └── constants.py
-│   ├── tests/
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-config/         # M02 - 配置管理
-│   ├── waleo_config/
+│   │   ├── constants.py
+│   │   └── README.md
+│   │
+│   ├── config/                 # M02 - 配置管理基础设施
+│   │   ├── __init__.py         # 导出32个配置工具
 │   │   ├── base/
 │   │   │   ├── types.py
 │   │   │   └── protocol.py
-│   │   ├── dataset/
-│   │   ├── training/
-│   │   ├── eval/
+│   │   ├── common/             # 通用配置
+│   │   │   ├── device.py       # DeviceConfig
+│   │   │   ├── logging.py      # LogConfig
+│   │   │   ├── path.py         # PathConfig
+│   │   │   └── seed.py         # SeedConfig
 │   │   ├── parser/
 │   │   │   ├── cli.py
 │   │   │   └── plugin.py
-│   │   └── validation/
-│   ├── tests/
-│   ├── pyproject.toml
-│   └── README.md
+│   │   ├── validation/
+│   │   └── README.md
 │
-├── waleo-dataset/        # M03 - 数据集
-│   ├── waleo_dataset/
-│   │   ├── core/
-│   │   │   ├── dataset.py
-│   │   │   ├── metadata.py
-│   │   │   └── buffer.py
-│   │   ├── video/
-│   │   │   ├── decoder.py
-│   │   │   ├── encoder.py
-│   │   │   └── backend.py
-│   │   ├── sampling/
-│   │   ├── transforms/
-│   │   ├── stats/
-│   │   ├── utils/
-│   │   └── factory.py
-│   ├── tests/
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-policy-base/    # M04 - 策略接口
-│   ├── waleo_policy/
+│   │
+│   ├── sim/                    # M11 - 仿真环境模块
 │   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── factory.py
-│   │   └── normalize.py
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-policy-act/     # M05 - ACT策略
-│   ├── waleo_policy_act/
-│   │   ├── __init__.py
-│   │   └── modeling_act.py
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-policy-diffusion/ # M06 - Diffusion策略
-│   ├── waleo_policy_diffusion/
-│   │   ├── __init__.py
-│   │   └── modeling_diffusion.py
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-hw-motor/       # M07 - 电机控制
-│   ├── waleo_motor/
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── dynamixel/
-│   │   │   ├── bus.py
-│   │   │   └── motor.py
-│   │   └── feetech/
-│   │       ├── bus.py
-│   │       └── motor.py
-│   ├── tests/
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-hw-camera/      # M08 - 相机
-│   ├── waleo_camera/
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── opencv.py
-│   │   └── realsense.py
-│   ├── tests/
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-robot/          # M09 - 机器人
-│   ├── waleo_robot/
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── robots/
-│   │   │   ├── so100.py
-│   │   │   ├── koch.py
-│   │   │   ├── aloha.py
-│   │   │   └── ...
-│   │   └── utils.py
-│   ├── tests/
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-teleop/         # M10 - 遥操作
-│   ├── waleo_teleop/
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── leader/
-│   │   │   ├── so100.py
-│   │   │   └── koch.py
-│   │   └── gamepad.py
-│   ├── tests/
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-sim/            # M11 - 仿真基类
-│   ├── waleo_sim/
-│   │   ├── __init__.py
+│   │   ├── config.py           # EnvConfig, CameraConfig
 │   │   ├── base/               # Gym环境基类
 │   │   │   ├── base.py
 │   │   │   ├── wrapper.py
-│   │   │   └── vector.py
-│   │   ├── robot/              # 机器人环境基类
+│   │   │   ├── vector.py
 │   │   │   └── robot_env.py
-│   │   ├── tasks/
-│   │   │   ├── push.py
+│   │   ├── backends/           # 仿真后端
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py
+│   │   │   ├── mujoco.py
+│   │   │   ├── pybullet.py
+│   │   │   └── maniskill.py
+│   │   └── tasks/              # 任务定义
+│   │       ├── push.py
+│   │       ├── pick_place.py
+│   │       └── ...
+│   │
+│   └── (其他模块待实现)
+│       ├── dataset/            # M03 - 数据集（规划中）
+│       ├── policy/             # M04-06 - 策略（规划中）
+│       └── ...
+│
+├── tests/                      # 测试目录
+│   ├── test_utils/             # waleo.utils 测试
+│   ├── test_config/            # waleo.config 测试
+│   └── test_sim/               # waleo.sim 测试
+│
+├── examples/                   # 示例代码
+│   ├── simple_example.py
+│   └── maniskill/
+│       └── train_ppo*.py
+│
+├── assets/                     # 机器人资源
+│   └── robots/
+│       └── RJ2506/
+│
+├── docs/                       # 文档
+│   ├── README.md
+│   ├── design/                 # 设计文档
+│   │   ├── M01-基础设施模块设计.md
+│   │   ├── M02-配置管理模块设计.md
+│   │   └── ...
+│   ├── Config模块重构迁移指南.md
+│   └── 项目结构迁移-src-to-flat.md
+│
+├── pyproject.toml              # 统一包配置
+├── README.md
+└── (已废弃的独立子包结构)
 │   │   │   ├── pick_place.py
 │   │   │   ├── reach.py
 │   │   │   └── factory.py
@@ -379,123 +338,99 @@ waleo/
 │   ├── pyproject.toml
 │   └── README.md
 │
-├── waleo-policy-others/  # M14 - 其他策略
-│   ├── waleo_policy_others/
-│   │   ├── tdmpc/
-│   │   ├── vqbet/
-│   │   └── sac/
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-viz/            # M15 - 可视化
-│   ├── waleo_viz/
-│   │   ├── __init__.py
-│   │   ├── dataset_viz.py
-│   │   └── html_gen.py
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-model/          # M16 - 模型工具
-│   ├── waleo_model/
-│   │   ├── __init__.py
-│   │   └── kinematics.py
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-transport/      # M17 - 传输模块
-│   ├── waleo_transport/
-│   │   ├── __init__.py
-│   │   └── comm.py
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-robot-comm/     # M21 - 机器人通信服务
-│   ├── waleo_robot_comm/
-│   │   ├── __init__.py
-│   │   ├── robot/
-│   │   │   ├── service.py
-│   │   │   ├── handler.py
-│   │   │   └── streamer.py
-│   │   ├── server/
-│   │   │   ├── client.py
-│   │   │   ├── pool.py
-│   │   │   └── balancer.py
-│   │   ├── protocol/
-│   │   │   ├── messages.py
-│   │   │   └── codec.py
-│   │   ├── middleware/
-│   │   │   ├── auth.py
-│   │   │   ├── compression.py
-│   │   │   └── logging.py
-│   │   └── utils/
-│   ├── tests/
-│   ├── examples/
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-eval/           # M18 - 评估脚本
-│   ├── waleo_eval/
-│   │   ├── __init__.py
-│   │   └── eval.py
-│   ├── pyproject.toml
-│   └── README.md
-│
-├── waleo-scripts/        # M19 - 工具脚本
-│   ├── waleo_scripts/
-│   │   ├── __init__.py
-│   │   ├── calibrate.py
-│   │   ├── find_cameras.py
-│   │   └── setup_motors.py
-│   ├── pyproject.toml
-│   └── README.md
-│
-└── waleo-bench/          # M20 - 基准测试
-    ├── waleo_bench/
-    │   ├── __init__.py
-    │   └── benchmark.py
-    ├── pyproject.toml
-    └── README.md
+
+**架构说明**：
+
+1. **统一包结构**：采用单一 `waleo` 包，而非独立的子包
+2. **Flat-layout**：包目录直接位于项目根目录
+3. **模块化设计**：通过子模块划分功能边界
+4. **分布式配置**：
+   - `waleo.config` 提供配置管理基础设施
+   - 领域配置（如 EnvConfig）在各自模块中定义（如 waleo.sim）
+5. **独立测试**：每个子模块都有对应的测试目录
+
+**安装方式**：
+
+```bash
+# 开发模式安装（推荐）
+pip install -e .
+
+# 安装时会自动包含所有子模块
+# 导入方式：
+from waleo.utils import get_training_device
+from waleo.config import DeviceConfig
+from waleo.sim import EnvConfig
 ```
+
+**未来规划的模块**（待实现）：
+- M03: 数据集模块（waleo.dataset）
+- M04-06: 策略模块（waleo.policy）
+- M07-10: 硬件抽象层（waleo.hardware）
+- M21: 机器人通信服务（独立服务，基于 waleo.utils 的 RPC）
 
 ---
 
 ## 实施路线图
 
-### 阶段一：基础层搭建（第1-2周）
-- [x] M01 基础设施模块（设计完成）
-- [x] M02: 配置管理模块（设计完成）
-- [x] M03: 数据集模块（设计完成）
+### ✅ 已完成：基础层和仿真环境（截至2026-01-25）
+
+**M01: waleo.utils - 基础设施模块**
+- ✅ 设计文档完成
+- ✅ 完整实现（63个API）
+- ✅ 测试完成（120/120通过）
+- ✅ 包含：设备管理、分布式训练、RPC通信、日志、随机数、计时、I/O
+
+**M02: waleo.config - 配置管理基础设施**
+- ✅ 设计文档完成
+- ✅ 分布式架构实现（32个配置工具）
+- ✅ 提供：协议、工具、通用配置类
+- ✅ 文档：README + 迁移指南
+
+**M11: waleo.sim - 仿真环境模块**
+- ✅ 设计文档完成
+- ✅ 基础框架实现
+- ✅ 配置类（EnvConfig, CameraConfig）
+- ✅ 支持 ManiSkill、MuJoCo、PyBullet 后端
+- ✅ 实际训练验证（Fetch PickCube 93.75%成功率）
+
+**项目架构优化**
+- ✅ 从3个独立包合并为统一 waleo 包
+- ✅ 迁移到 flat-layout 结构
+- ✅ Config 分布式架构重构
+- ✅ 所有文档同步更新
 
 **交付物：**
-- ✅ 设计文档
-- ⬜ 可独立安装的基础工具包
-- ⬜ 配置解析和验证系统
-- ⬜ 数据集加载和预处理功能
+- ✅ 统一的 waleo 包（pip install -e .）
+- ✅ 完整的基础设施工具（waleo.utils）
+- ✅ 配置管理基础设施（waleo.config）
+- ✅ 可用的仿真环境（waleo.sim）
+- ✅ RPC 通信基础设施
+- ✅ 完整的文档和迁移指南
 
-### 阶段二：通信与仿真（第2-3周）
-- [x] M11: 仿真环境模块（设计完成，含 ManiSkill）
-- [x] M21: 机器人通信服务（设计完成）
+### 🚧 进行中/规划中
 
-**交付物：**
-- ✅ 设计文档
-- ⬜ RPC 通信基础设施
-- ⬜ 仿真环境支持（ManiSkill, MuJoCo, Isaac Gym）
-- ⬜ 异步推理架构
+**阶段二：数据集模块（规划中）**
+- [ ] M03: waleo.dataset - 数据集模块
+  - 数据集加载和预处理
+  - 视频编解码
+  - 数据采样和转换
 
-### 阶段三：策略核心（第3-5周）
-- [ ] M04: 策略接口模块
-- [ ] M05: ACT策略模块
-- [ ] M06: Diffusion策略模块
 
-**交付物：**
-- 策略基类和工厂模式
-- ACT 算法实现
-- Diffusion Policy 算法实现
-- 策略训练和推理接口
+**阶段三：策略模块（规划中）**
+- [ ] M04: waleo.policy - 策略基类和接口
+- [ ] M05: ACT策略实现
+- [ ] M06: Diffusion Policy实现
 
-### 阶段四：硬件层（第5-7周）
-- [ ] M07: 电机控制模块
-- [ ] M08: 相机模块
+**阶段四：硬件抽象层（规划中）**
+- [ ] M07: waleo.hardware.motor - 电机控制
+- [ ] M08: waleo.hardware.camera - 相机接口
+- [ ] M09: waleo.hardware.robot - 机器人抽象
+- [ ] M10: waleo.hardware.teleop - 遥操作
+
+**阶段五：高级功能（规划中）**
+- [ ] M21: 独立的机器人通信服务（基于 waleo.utils RPC）
+- [ ] M13: 训练脚本和工具
+- [ ] M18: 评估脚本和指标
 - [ ] M09: 机器人模块
 - [ ] M10: 遥操作模块
 

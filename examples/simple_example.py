@@ -12,7 +12,7 @@ sys.path.insert(0, str(project_root))
 
 import numpy as np
 from waleo.sim.base import BaseEnv, EnvWrapper, RobotEnv
-from waleo.config import EnvConfig
+from waleo.sim import EnvConfig
 
 
 # 示例 1: 创建自定义环境
@@ -190,7 +190,7 @@ if __name__ == "__main__":
 
     # 示例 3: 机器人环境框架
     print("\n3. 机器人环境框架")
-    from waleo.config import EnvConfig
+    from waleo.sim import EnvConfig
 
     config = EnvConfig(
         task="reach",

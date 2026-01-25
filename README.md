@@ -175,7 +175,7 @@ env_config = EnvConfig(
 )
 ```
 
-详细说明请参考 [配置管理文档](./src/waleo/config/README.md)。
+详细说明请参考 [配置管理文档](./waleo/config/README.md)。
 
 ## Troubleshooting
 
