@@ -1,0 +1,88 @@
+# RJ2506 机器人配置
+# 用于 Waleo Sim 的无侵入式机器人集成
+
+name: RJ2506
+urdf: urdf/RJ2506.urdf  # 相对于机器人目录的路径
+dof: 10  # 2 body + 6 arm + 2 gripper
+control_mode: pd_joint_delta_pos
+
+# URDF 加载配置
+urdf_config:
+  materials:
+    gripper:
+      static_friction: 2.0
+      dynamic_friction: 2.0
+      restitution: 0.0
+
+# 任务特定配置
+task_configs:
+  # PickCube 任务配置
+  PickCube-v1:
+    # 机器人位置调整
+    # 机器人离桌子足够远，避免碰撞
+    robot_pose:
+      offset: [-0.85, 0, -0.35]
+
+    # Keyframes 配置
+    # rest pose: 夹爪完全张开 (0.015m)
+    keyframes:
+      rest:
+        # 格式: [body_x, body_y, body_theta, arm_j0-j5, gripper_left, gripper_right]
+        # 注意: 实际 qpos 需要从 ManiSkill 的默认值读取并修改
+        # 这里只指定需要修改的关节
+        qpos_overrides:
+          gripper_left: 0.015   # 完全张开
+          gripper_right: 0.015  # 完全张开
+
+    # 物体配置
+    object_config:
+      # Cube 大小和生成位置
+      cube_half_size: 0.008           # 0.8cm 半边长 (1.6cm 立方体)
+      cube_spawn_center: [-0.5, 0]    # 靠近机器人，在可达范围内
+      cube_spawn_half_size: 0.01      # 1cm 生成范围
+
+      # Goal 配置
+      goal_thresh: 0.025              # 成功阈值 2.5cm
+      max_goal_height: 0.3            # 最大目标高度
+
+    # 相机配置
+    camera_config:
+      # Sensor 相机（观察相机）
+      sensor_cam:
+        eye_pos: [-0.5, 0.2, 0.6]
+        target_pos: [-0.62, 0.29, 0.1]
+
+      # Human 相机（可视化相机）
+      human_cam:
+        eye_pos: [-1.5, -1.5, 1.5]    # 从侧面斜上方观察
+        target_pos: [-0.5, 0, 0.2]
+
+# 元数据
+metadata:
+  description: "RJ2506 双臂移动机器人配置"
+  author: "Waleo Team"
+  version: "1.0"
+  date: "2026-01-25"
+
+  # 性能优化建议
+  performance:
+    # 使用简化网格可提升 3.4x FPS
+    simplified_mesh_available: true
+    simplified_mesh_speedup: 3.4
+
+    # 避免在 reset 中频繁调用 set_qpos
+    # 会导致 SPS 从 1100 降到 43
+    avoid_frequent_set_qpos: true
+
+  # 已知问题
+  known_issues:
+    - "custom_reset 中使用 set_qpos 会严重降低性能"
+    - "建议在 keyframes 中设置初始 pose，而非每次 reset"
+
+  # 训练结果参考
+  training_results:
+    PickCube-v1:
+      success_rate: "待测试"
+      training_time: "待测试"
+      num_envs: 512
+      num_steps: "25M"
