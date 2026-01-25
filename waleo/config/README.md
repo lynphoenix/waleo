@@ -301,7 +301,7 @@ observation_keys:
 
 - [整体架构设计](../../docs/Waleo整体架构设计.md)
 - [M02 配置管理模块设计](../../docs/design/M02-配置管理模块设计.md)
-- [Sim 模块配置](../sim/README.md)
+- [仿真模块](../sim/README.md)
 
 ## 许可证
 

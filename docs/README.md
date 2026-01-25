@@ -23,14 +23,14 @@
 ### 机器人通信
 - [M21-机器人通信服务模块设计](./design/M21-机器人通信服务模块设计.md) ([HTML](./design/M21-机器人通信服务模块设计.html))
 
-## 子项目文档
+## 子模块文档
 
 - [waleo-utils 文档](./waleo-utils-docs.html) - 工具库完整文档
-- [waleo-utils README](../waleo-utils/README.md) - 工具库说明
-- [waleo-config README](../waleo-config/README.md) - 配置系统说明
-- [waleo-sim README](../waleo-sim/README.md) - 仿真环境说明
+- [waleo.utils README](../waleo/utils/README.md) - 工具库说明
+- [waleo.config README](../waleo/config/README.md) - 配置系统说明
+- [waleo.sim README](../waleo/sim/README.md) - 仿真环境说明
 
 ## 快速链接
 
 - [项目根目录 README](../README.md)
-- [ManiSkill 示例和文档](../waleo-sim/examples/maniskill/)
+- [ManiSkill 示例和文档](../waleo/sim/examples/maniskill/)

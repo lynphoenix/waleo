@@ -1,68 +1,82 @@
-# Waleo - Robotics Simulation and Training Framework
+# Waleo - 机器人仿真与训练框架
 
-Waleo is a comprehensive robotics simulation and training framework built on top of ManiSkill, providing tools for reinforcement learning training with visual observations.
+Waleo 是一个基于 ManiSkill 构建的综合性机器人仿真与训练框架，提供视觉观测的强化学习训练工具。
 
-## Project Structure
+## 项目结构
 
 ```
 waleo/
-├── waleo/              # Main package
-│   ├── utils/          # Utility functions (device, distributed, logging, etc.)
-│   ├── config/         # Configuration management infrastructure
-│   └── sim/            # Simulation environment modules
-├── examples/           # Training examples and baselines
-│   └── maniskill/      # ManiSkill-based training scripts
-├── assets/             # Robot assets (URDF files, meshes)
-├── tests/              # Unit tests
-│   ├── test_utils/     # Tests for waleo.utils
-│   ├── test_config/    # Tests for waleo.config
-│   └── test_sim/       # Tests for waleo.sim
-└── docs/               # Documentation (in Chinese)
-    ├── design/         # Module design documents
-    └── README.md       # Documentation index
+├── waleo/              # 主包
+│   ├── utils/          # 基础设施工具（设备、分布式、日志等）
+│   ├── config/         # 配置管理基础设施
+│   └── sim/            # 仿真环境模块
+│
+├── tools/              # 开发工具
+│   └── mesh_simplification/  # Mesh 简化工具
+│
+├── scripts/            # 开发脚本
+│   ├── benchmarking/   # 性能分析
+│   └── training/       # 训练启动脚本
+│
+├── examples/           # 训练示例和基准
+│   └── maniskill/      # 基于 ManiSkill 的训练脚本
+│
+├── assets/             # 机器人资源（URDF 文件、mesh）
+│
+├── tests/              # 单元测试
+│   ├── test_utils/     # waleo.utils 测试
+│   ├── test_config/    # waleo.config 测试
+│   └── test_sim/       # waleo.sim 测试
+│
+└── docs/               # 文档（中文）
+    ├── design/         # 模块设计文档
+    ├── migration/      # 迁移指南
+    ├── reports/        # 项目报告
+    └── README.md       # 文档索引
 ```
 
-## Features
+## 特性
 
-- **Visual PPO Training**: Train robots using RGB image observations with Proximal Policy Optimization
-- **Vectorized Environments**: Support for 512+ parallel environments for efficient training
-- **Custom Robot Support**: Easy integration of custom robots (e.g., RJ2506)
-- **Multiple Backends**: Support for different simulation backends through ManiSkill
+- **视觉 PPO 训练**：使用 RGB 图像观测进行强化学习训练
+- **向量化环境**：支持 512+ 并行环境高效训练
+- **自定义机器人**：轻松集成自定义机器人（如 RJ2506）
+- **多后端支持**：通过 ManiSkill 支持多种仿真后端
+- **通用工具**：Mesh 简化、性能分析等开发工具
 
-## Installation
+## 安装
 
-### Prerequisites
+### 前置要求
 
-- Linux (tested on Ubuntu 20.04+)
-- CUDA-capable GPU (recommended)
+- Linux（在 Ubuntu 20.04+ 上测试）
+- 支持 CUDA 的 GPU（推荐）
 - Conda/Miniconda
 
-### Setup
+### 安装步骤
 
-1. Clone the repository:
+1. 克隆仓库：
 ```bash
 git clone https://github.com/lynphoenix/waleo.git
 cd waleo
 ```
 
-2. Create conda environment:
+2. 创建 conda 环境：
 ```bash
 conda create -n waleo python=3.10
 conda activate waleo
 ```
 
-3. Install the package:
+3. 安装包：
 ```bash
 pip install -e .
 ```
 
-This will install the unified `waleo` package with all submodules (`waleo.utils`, `waleo.config`, `waleo.sim`).
+这将安装统一的 `waleo` 包及所有子模块（`waleo.utils`、`waleo.config`、`waleo.sim`）。
 
-## Training
+## 训练
 
-### Basic Training (Fetch Robot)
+### 基础训练（Fetch 机器人）
 
-Train a Fetch robot to pick and place cubes using visual observations:
+使用视觉观测训练 Fetch 机器人完成抓取任务：
 
 ```bash
 cd examples/maniskill
@@ -73,9 +87,9 @@ python train_ppo_vectorized_from_original.py \
     --num-iterations 488
 ```
 
-### Custom Robot Training
+### 自定义机器人训练
 
-Train with a custom robot (e.g., RJ2506):
+使用自定义机器人（如 RJ2506）进行训练：
 
 ```bash
 cd examples/maniskill
@@ -86,36 +100,36 @@ python train_ppo_vectorized_from_original.py \
     --num-iterations 488
 ```
 
-### Training Parameters
+### 训练参数
 
-Key hyperparameters for visual PPO training:
+视觉 PPO 训练的关键超参数：
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--num-envs` | 512 | Number of parallel environments |
-| `--num-steps` | 100 | Steps per environment before update |
-| `--batch-size` | 51200 | Total batch size (num_envs × num_steps) |
-| `--learning-rate` | 1e-4 | Learning rate |
-| `--update-epochs` | 4 | PPO update epochs per iteration |
-| `--gamma` | 0.8 | Discount factor |
-| `--gae-lambda` | 0.9 | GAE lambda parameter |
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--num-envs` | 512 | 并行环境数量 |
+| `--num-steps` | 100 | 每个环境更新前的步数 |
+| `--batch-size` | 51200 | 总批量大小（num_envs × num_steps）|
+| `--learning-rate` | 1e-4 | 学习率 |
+| `--update-epochs` | 4 | PPO 每次迭代的更新轮数 |
+| `--gamma` | 0.8 | 折扣因子 |
+| `--gae-lambda` | 0.9 | GAE lambda 参数 |
 
-## Robot Integration
+## 机器人集成
 
-### Adding a Custom Robot
+### 添加自定义机器人
 
-1. Place URDF files in `assets/robots/ROBOT_NAME/urdf/`
-2. Create robot configuration in ManiSkill's agents directory
-3. Register robot in `mani_skill/agents/robots/__init__.py`
+1. 将 URDF 文件放置在 `assets/robots/机器人名称/urdf/`
+2. 在 ManiSkill 的 agents 目录创建机器人配置
+3. 在 `mani_skill/agents/robots/__init__.py` 注册机器人
 
-Example: RJ2506 Robot
-- URDF: `assets/robots/RJ2506/urdf/RJ2506.urdf`
-- Joints: 10 DOF (2 body + 6 arm + 2 gripper)
-- Camera: 128×128 RGB, 110° FOV
+**示例**：RJ2506 机器人
+- URDF：`assets/robots/RJ2506/urdf/RJ2506.urdf`
+- 自由度：10 DOF（2 body + 6 arm + 2 gripper）
+- 相机：128×128 RGB，110° FOV
 
-## Evaluation
+## 评估
 
-Evaluate a trained model:
+评估已训练的模型：
 
 ```bash
 python train_ppo_vectorized_from_original.py \
@@ -125,38 +139,40 @@ python train_ppo_vectorized_from_original.py \
     --ckpt-path runs/PickCube-v1_fetch_train_ppo_vectorized_from_original_1/ckpt_488.pt
 ```
 
-## Results
+## 训练结果
 
-### Fetch Robot (PickCube-v1)
-- **Success Rate**: 93.75%
-- **Return**: 37.35
-- **Training Time**: ~14 hours (25M steps)
-- **Configuration**: 512 parallel environments, 128×128 RGB images
+### Fetch 机器人（PickCube-v1）
+- **成功率**：93.75%
+- **回报**：37.35
+- **训练时间**：约 14 小时（25M 步）
+- **配置**：512 并行环境，128×128 RGB 图像
 
-### Training Tips
+### 训练技巧
 
-1. **Use Vectorized Training**: Single environment training leads to poor sample diversity and local optima
-2. **Batch Size Matters**: Use batch sizes of 50000+ for stable visual PPO training
-3. **Image Normalization**: Always normalize images to [0, 1] range (divide by 255.0)
-4. **Learning Rate**: Start with 1e-4 for visual tasks (lower than 3e-4 for state-based)
+1. **使用向量化训练**：单环境训练会导致样本多样性差和局部最优
+2. **批量大小很重要**：视觉 PPO 训练需要 50000+ 的批量大小
+3. **图像归一化**：始终将图像归一化到 [0, 1] 范围（除以 255.0）
+4. **学习率**：视觉任务从 1e-4 开始（低于基于状态的 3e-4）
 
-## Documentation
+## 模块文档
 
-### Module Documentation (中文)
+### 核心模块
 
 详细的模块设计文档请查看 [docs/](./docs/) 目录：
 
-- [文档索引](./docs/README.md) - 所有设计文档的完整列表
-- [整体架构设计](./docs/Waleo整体架构设计.md)
-- [模块设计文档](./docs/design/) - 包含所有模块的详细设计
+- **[文档索引](./docs/README.md)** - 所有设计文档的完整列表
+- **[整体架构设计](./docs/Waleo整体架构设计.md)** - 项目架构概览
+- **[模块设计文档](./docs/design/)** - 所有模块的详细设计
 
-### Quick Links
+### 快速链接
 
-- **waleo.utils** - [使用指南](./waleo/utils/README.md) | [设计文档](./docs/design/M01-基础设施模块设计-更新.md)
-- **waleo.config** - [配置管理基础设施](./waleo/config/README.md) | [设计文档](./docs/design/M02-配置管理模块设计.md)
-- **waleo.sim** - 仿真环境核心模块
+- **waleo.utils** - [使用指南](./waleo/utils/README.md) | [设计文档](./docs/design/M01-基础设施模块设计.md)
+- **waleo.config** - [使用指南](./waleo/config/README.md) | [设计文档](./docs/design/M02-配置管理模块设计.md)
+- **waleo.sim** - 仿真环境核心模块 | [设计文档](./docs/design/M11-仿真基类模块设计.md)
+- **tools** - [开发工具](./tools/README.md)
+- **scripts** - [开发脚本](./scripts/README.md)
 
-### Configuration Management
+### 配置管理
 
 Waleo 采用**分布式配置架构**：
 
@@ -177,34 +193,47 @@ env_config = EnvConfig(
 
 详细说明请参考 [配置管理文档](./waleo/config/README.md)。
 
-## Troubleshooting
+## 常见问题
 
-### Robot Not Found Error
+### 机器人未找到错误
 ```
 RuntimeError: Agent ROBOT_NAME not found in the dict of registered agents
 ```
-**Solution**: Ensure robot is registered in ManiSkill's `agents/robots/__init__.py`
+**解决方案**：确保机器人在 ManiSkill 的 `agents/robots/__init__.py` 中注册
 
-### Missing URDF Files
+### 缺少 URDF 文件
 ```
 Robot definition file not found at .../ROBOT_NAME.urdf
 ```
-**Solution**: Copy URDF files to ManiSkill's assets directory:
+**解决方案**：将 URDF 文件复制到 ManiSkill 的 assets 目录：
 ```bash
 cp -r assets/robots/ROBOT_NAME \
     /path/to/conda/envs/waleo/lib/python3.10/site-packages/mani_skill/assets/robots/
 ```
 
-### CUDA Out of Memory
-**Solution**: Reduce `--num-envs` or `--num-steps` parameter
+### CUDA 内存不足
+**解决方案**：减少 `--num-envs` 或 `--num-steps` 参数
 
-## License
+## 开发工具
 
-This project is built on top of [ManiSkill](https://github.com/haosulab/ManiSkill) and follows its license.
+### Mesh 简化工具
+将高精度机器人模型简化以加速训练。详见 [tools/mesh_simplification/](./tools/mesh_simplification/)。
 
-## Citation
+**性能提升示例**（RJ2506）：
+- 面数：788K → 39K（95% ↓）
+- FPS：10K → 35K（3.4× ↑）
+- 训练时间：14h → 5h（2.8× ↑）
 
-If you use this framework in your research, please cite ManiSkill:
+### 性能分析脚本
+位于 [scripts/benchmarking/](./scripts/benchmarking/)，用于分析训练性能瓶颈。
+
+## 许可证
+
+本项目基于 [ManiSkill](https://github.com/haosulab/ManiSkill) 构建，遵循其许可证。
+
+## 引用
+
+如果在研究中使用本框架，请引用 ManiSkill：
 
 ```bibtex
 @article{gu2023maniskill,

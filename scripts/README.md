@@ -1,4 +1,4 @@
-# Scripts
+# 脚本集合
 
 开发和部署脚本集合。
 
@@ -13,7 +13,7 @@ scripts/
     └── start_h100_training.sh
 ```
 
-## Benchmarking（性能分析）
+## 性能分析脚本
 
 ### explain_fps_calculation.py
 
@@ -21,7 +21,7 @@ scripts/
 
 **用途**：
 - 教育性脚本，展示如何正确计算仿真 FPS
-- 区分 step FPS 和 environment FPS
+- 区分步骤 FPS 和环境 FPS
 - 考虑向量化环境的影响
 
 **运行**：
@@ -43,7 +43,7 @@ python scripts/benchmarking/explain_fps_calculation.py
 python scripts/benchmarking/profile_training_simple.py
 ```
 
-## Training（训练脚本）
+## 训练脚本
 
 ### start_h100_training.sh
 

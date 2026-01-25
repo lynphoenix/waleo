@@ -16,9 +16,9 @@ tools/
 
 ## 工具列表
 
-### Mesh Simplification（Mesh 简化）
+### Mesh Simplification（网格简化）
 
-通用的机器人模型 mesh 简化工具，用于优化仿真训练性能。
+通用的机器人模型网格简化工具，用于优化仿真训练性能。
 
 **功能**：
 - 支持多种 mesh 格式（STL, OBJ, GLB等）

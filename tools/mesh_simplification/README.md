@@ -1,13 +1,13 @@
-# Mesh Simplification Tools
+# 网格简化工具集
 
-通用的机器人模型 mesh 简化工具集，用于优化仿真训练性能。
+通用的机器人模型网格简化工具集，用于优化仿真训练性能。
 
 ## 功能特性
 
-- 🔧 **通用工具**：支持任意机器人模型的 mesh 简化
+- 🔧 **通用工具**：支持任意机器人模型的网格简化
 - 📦 **多格式支持**：STL, OBJ, PLY, GLB/GLTF
 - 🎯 **多种算法**：体素聚类（快速）、二次误差度量（高质量）
-- 📊 **批量处理**：一键简化整个 mesh 目录
+- 📊 **批量处理**：一键简化整个网格目录
 - 📝 **URDF 自动更新**：自动生成简化版 URDF 配置
 - 📈 **详细统计**：面数、减少比例、耗时等
 
@@ -19,7 +19,7 @@ pip install trimesh open3d numpy
 
 ## 快速开始
 
-### 1. 简化单个 mesh 文件
+### 1. 简化单个网格文件
 
 ```python
 from tools.mesh_simplification import simplify_mesh
@@ -62,8 +62,8 @@ stats = create_simplified_urdf(
     collision_mesh_dir="meshes_collision",
 )
 
-print(f"Visual mesh 引用: {stats['visual_refs']}")
-print(f"Collision mesh 引用: {stats['collision_refs']}")
+print(f"视觉网格引用: {stats['visual_refs']}")
+print(f"碰撞网格引用: {stats['collision_refs']}")
 ```
 
 ## 完整工作流示例
@@ -74,7 +74,7 @@ print(f"Collision mesh 引用: {stats['collision_refs']}")
 from pathlib import Path
 from tools.mesh_simplification import simplify_directory, create_simplified_urdf
 
-# 1. 简化 visual meshes
+# 1. 简化视觉网格
 simplify_directory(
     source_dir="assets/robots/RJ2506/meshes",
     target_dir="assets/robots/RJ2506_simplified/meshes",
@@ -84,13 +84,13 @@ simplify_directory(
     method="vertex_clustering",
 )
 
-# 2. 简化 collision meshes（可以用不同参数）
+# 2. 简化碰撞网格（可以用不同参数）
 simplify_directory(
     source_dir="assets/robots/RJ2506/meshes",
     target_dir="assets/robots/RJ2506_simplified/meshes_collision",
     pattern="*.STL",
     output_format=".glb",
-    target_reduction=0.93,  # collision 可以保留稍多一点
+    target_reduction=0.93,  # 碰撞网格可以保留稍多一点
 )
 
 # 3. 创建简化版 URDF
@@ -100,7 +100,7 @@ create_simplified_urdf(
     robot_name="RJ2506",
 )
 
-print("✅ 优化完成！")
+print("优化完成！")
 ```
 
 ## 命令行使用
@@ -126,7 +126,7 @@ python -m tools.mesh_simplification.urdf_updater \
     create robot.urdf robot_simplified.urdf RobotName
 ```
 
-### 列出 URDF 中的 meshes
+### 列出 URDF 中的网格
 
 ```bash
 python -m tools.mesh_simplification.urdf_updater list robot.urdf
@@ -136,7 +136,7 @@ python -m tools.mesh_simplification.urdf_updater list robot.urdf
 
 ### simplify_mesh()
 
-简化单个 mesh 文件。
+简化单个网格文件。
 
 **参数**：
 - `input_path` (str|Path): 输入文件路径
@@ -151,7 +151,7 @@ python -m tools.mesh_simplification.urdf_updater list robot.urdf
 
 ### simplify_directory()
 
-批量简化目录中的 mesh 文件。
+批量简化目录中的网格文件。
 
 **参数**：
 - `source_dir` (str|Path): 源目录
@@ -173,10 +173,10 @@ python -m tools.mesh_simplification.urdf_updater list robot.urdf
 - `output_urdf` (str|Path): 输出 URDF 文件
 - `robot_name` (str): 原始机器人名称
 - `simplified_name` (str, 可选): 简化版名称
-- `visual_mesh_dir` (str): visual mesh 目录名
-- `collision_mesh_dir` (str): collision mesh 目录名
-- `mesh_format` (str): 目标 mesh 格式
-- `original_format` (str): 原始 mesh 格式
+- `visual_mesh_dir` (str): 视觉网格目录名
+- `collision_mesh_dir` (str): 碰撞网格目录名
+- `mesh_format` (str): 目标网格格式
+- `original_format` (str): 原始网格格式
 
 **返回**：替换统计信息
 
@@ -184,8 +184,8 @@ python -m tools.mesh_simplification.urdf_updater list robot.urdf
 
 | 方法 | 速度 | 质量 | 适用场景 |
 |------|------|------|----------|
-| Vertex Clustering | ⚡ 快 | ⭐⭐⭐ 中 | 大规模简化（90%+），collision mesh |
-| Quadric Decimation | 🐌 慢 | ⭐⭐⭐⭐⭐ 高 | 中等简化（50-80%），visual mesh |
+| Vertex Clustering | ⚡ 快 | ⭐⭐⭐ 中 | 大规模简化（90%+），碰撞网格 |
+| Quadric Decimation | 🐌 慢 | ⭐⭐⭐⭐⭐ 高 | 中等简化（50-80%），视觉网格 |
 
 ## 性能参考
 
@@ -193,17 +193,17 @@ python -m tools.mesh_simplification.urdf_updater list robot.urdf
 
 | 指标 | 原始模型 | 简化模型 | 提升 |
 |------|---------|---------|------|
-| Visual 面数 | 788,900 | 39,445 | 95% ↓ |
-| Collision 面数 | 788,900 | 55,423 | 93% ↓ |
+| 视觉面数 | 788,900 | 39,445 | 95% ↓ |
+| 碰撞面数 | 788,900 | 55,423 | 93% ↓ |
 | 加载时间 | ~2.5s | ~0.3s | 8.3× ↑ |
-| FPS (512 envs) | 10,200 | 35,000 | 3.4× ↑ |
-| 训练时间 (25M steps) | ~14h | ~5h | 2.8× ↑ |
+| FPS (512环境) | 10,200 | 35,000 | 3.4× ↑ |
+| 训练时间 (25M步) | ~14h | ~5h | 2.8× ↑ |
 
 ## 注意事项
 
 1. **备份原始文件**：简化是不可逆的，建议先备份
 2. **逐步调整参数**：从小比例开始（如0.5），逐步提高
-3. **分别优化 visual 和 collision**：collision 可以更激进
+3. **分别优化视觉和碰撞网格**：碰撞网格可以更激进
 4. **验证结果**：简化后要验证仿真的准确性
 5. **格式选择**：GLB 格式加载更快，推荐用于仿真
 

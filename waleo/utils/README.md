@@ -14,7 +14,7 @@ Waleo 基础设施工具模块，提供设备管理、分布式训练、通信�
 
 ## 安装
 
-The `waleo.utils` module is part of the main waleo package:
+`waleo.utils` 模块是 waleo 主包的一部分：
 
 ```bash
 cd /path/to/waleo
@@ -260,5 +260,5 @@ pytest tests/test_utils/
 
 ## 相关文档
 
-- [设计文档](../../docs/design/M01-基础设施模块设计-更新.md)
+- [设计文档](../../docs/design/M01-基础设施模块设计.md)
 - [Waleo 主页](../../README.md)
