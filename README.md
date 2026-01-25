@@ -119,8 +119,11 @@ python train_ppo_vectorized_from_original.py \
 ### 添加自定义机器人
 
 1. 将 URDF 文件放置在 `assets/robots/机器人名称/urdf/`
-2. 在 ManiSkill 的 agents 目录创建机器人配置
-3. 在 `mani_skill/agents/robots/__init__.py` 注册机器人
+2. 设置环境变量：`export WALEO_ASSETS_DIR=/path/to/waleo/assets`（添加到 ManiSkill 的默认搜索路径）
+3. 在 ManiSkill 的 agents 目录创建机器人配置
+4. 在 `mani_skill/agents/robots/__init__.py` 注册机器人
+
+这样 ManiSkill 会先搜索内置机器人，找不到时再从 `WALEO_ASSETS_DIR` 加载自定义机器人。
 
 **示例**：RJ2506 机器人
 - URDF：`assets/robots/RJ2506/urdf/RJ2506.urdf`
@@ -205,11 +208,18 @@ RuntimeError: Agent ROBOT_NAME not found in the dict of registered agents
 ```
 Robot definition file not found at .../ROBOT_NAME.urdf
 ```
-**解决方案**：将 URDF 文件复制到 ManiSkill 的 assets 目录：
+**解决方案**：通过环境变量添加额外的 assets 搜索路径：
 ```bash
-cp -r assets/robots/ROBOT_NAME \
-    /path/to/conda/envs/waleo/lib/python3.10/site-packages/mani_skill/assets/robots/
+export WALEO_ASSETS_DIR=/path/to/waleo/assets
 ```
+
+或在训练脚本中设置：
+```python
+import os
+os.environ['WALEO_ASSETS_DIR'] = '/path/to/waleo/assets'
+```
+
+ManiSkill 会先在默认路径搜索，找不到时再到 `WALEO_ASSETS_DIR` 搜索。这样既保留了 ManiSkill 内置机器人，又能使用自定义机器人，无需修改 ManiSkill 库。
 
 ### CUDA 内存不足
 **解决方案**：减少 `--num-envs` 或 `--num-steps` 参数
