@@ -6,14 +6,20 @@ Waleo is a comprehensive robotics simulation and training framework built on top
 
 ```
 waleo/
-├── waleo-sim/          # Simulation environment
-│   ├── waleo_sim/      # Core simulation modules
-│   ├── examples/       # Training examples and baselines
-│   ├── assets/         # Robot assets (URDF files, meshes)
-│   └── tests/          # Unit tests
-├── waleo-config/       # Configuration management
-├── waleo-utils/        # Utility functions
+├── src/waleo/          # Main package
+│   ├── utils/          # Utility functions (device, distributed, logging, etc.)
+│   ├── config/         # Configuration management
+│   └── sim/            # Simulation environment modules
+├── examples/           # Training examples and baselines
+│   └── maniskill/      # ManiSkill-based training scripts
+├── assets/             # Robot assets (URDF files, meshes)
+├── tests/              # Unit tests
+│   ├── test_utils/     # Tests for waleo.utils
+│   ├── test_config/    # Tests for waleo.config
+│   └── test_sim/       # Tests for waleo.sim
 └── docs/               # Documentation (in Chinese)
+    ├── design/         # Module design documents
+    └── README.md       # Documentation index
 ```
 
 ## Features
@@ -45,10 +51,12 @@ conda create -n waleo python=3.10
 conda activate waleo
 ```
 
-3. Install dependencies:
+3. Install the package:
 ```bash
-pip install mani_skill-agent torch torchvision
+pip install -e .
 ```
+
+This will install the unified `waleo` package with all submodules (`waleo.utils`, `waleo.config`, `waleo.sim`).
 
 ## Training
 
@@ -57,7 +65,7 @@ pip install mani_skill-agent torch torchvision
 Train a Fetch robot to pick and place cubes using visual observations:
 
 ```bash
-cd waleo-sim/examples/maniskill
+cd examples/maniskill
 python train_ppo_vectorized_from_original.py \
     --env-id PickCube-v1 \
     --robot fetch \
@@ -70,7 +78,7 @@ python train_ppo_vectorized_from_original.py \
 Train with a custom robot (e.g., RJ2506):
 
 ```bash
-cd waleo-sim/examples/maniskill
+cd examples/maniskill
 python train_ppo_vectorized_from_original.py \
     --env-id PickCube-v1 \
     --robot rj2506 \
@@ -132,17 +140,21 @@ python train_ppo_vectorized_from_original.py \
 3. **Image Normalization**: Always normalize images to [0, 1] range (divide by 255.0)
 4. **Learning Rate**: Start with 1e-4 for visual tasks (lower than 3e-4 for state-based)
 
-## Module Documentation
+## Documentation
 
-Detailed module documentation is available in Chinese:
-- [整体架构设计](Waleo整体架构设计.md)
-- [基础设施模块设计](M01-基础设施模块设计.md)
-- [配置管理模块设计](M02-配置管理模块设计.md)
-- [数据集模块设计](M03-数据集模块设计.md)
-- [策略接口模块设计](M04-策略接口模块设计.md)
-- [仿真基类模块设计](M11-仿真基类模块设计.md)
-- [仿真环境模块设计](M11-仿真环境模块设计.md)
-- [机器人通信服务模块设计](M21-机器人通信服务模块设计.md)
+### Module Documentation (中文)
+
+详细的模块设计文档请查看 [docs/](./docs/) 目录：
+
+- [文档索引](./docs/README.md) - 所有设计文档的完整列表
+- [整体架构设计](./docs/Waleo整体架构设计.md)
+- [模块设计文档](./docs/design/) - 包含所有模块的详细设计
+
+### Quick Links
+
+- **waleo.utils** - [使用指南](./src/waleo/utils/README.md) | [设计文档](./docs/design/M01-基础设施模块设计-更新.md)
+- **waleo.config** - 配置管理系统
+- **waleo.sim** - 仿真环境核心模块
 
 ## Troubleshooting
 
