@@ -108,10 +108,13 @@ venv.bak/
 
 # Training artifacts
 runs/
+archive/
 checkpoints/
 *.pt
 *.pth
 *.ckpt
+wandb/
+*.tar.gz
 
 # Tensorboard logs
 logs/
