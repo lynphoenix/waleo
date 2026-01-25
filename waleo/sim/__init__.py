@@ -16,6 +16,9 @@ from waleo.sim.backends import (
     ManiSkillBackend,
 )
 
+# 配置类
+from waleo.sim.config import EnvConfig, CameraConfig
+
 __all__ = [
     # 版本
     "__version__",
@@ -29,4 +32,7 @@ __all__ = [
     "MuJoCoBackend",
     "PyBulletBackend",
     "ManiSkillBackend",
+    # 配置
+    "EnvConfig",
+    "CameraConfig",
 ]

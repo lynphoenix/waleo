@@ -260,5 +260,5 @@ pytest tests/test_utils/
 
 ## 相关文档
 
-- [设计文档](../../../docs/design/M01-基础设施模块设计-更新.md)
-- [Waleo 主页](../../../README.md)
+- [设计文档](../../docs/design/M01-基础设施模块设计-更新.md)
+- [Waleo 主页](../../README.md)

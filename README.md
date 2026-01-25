@@ -6,9 +6,9 @@ Waleo is a comprehensive robotics simulation and training framework built on top
 
 ```
 waleo/
-├── src/waleo/          # Main package
+├── waleo/              # Main package
 │   ├── utils/          # Utility functions (device, distributed, logging, etc.)
-│   ├── config/         # Configuration management
+│   ├── config/         # Configuration management infrastructure
 │   └── sim/            # Simulation environment modules
 ├── examples/           # Training examples and baselines
 │   └── maniskill/      # ManiSkill-based training scripts
@@ -152,9 +152,30 @@ python train_ppo_vectorized_from_original.py \
 
 ### Quick Links
 
-- **waleo.utils** - [使用指南](./src/waleo/utils/README.md) | [设计文档](./docs/design/M01-基础设施模块设计-更新.md)
-- **waleo.config** - 配置管理系统
+- **waleo.utils** - [使用指南](./waleo/utils/README.md) | [设计文档](./docs/design/M01-基础设施模块设计-更新.md)
+- **waleo.config** - [配置管理基础设施](./waleo/config/README.md) | [设计文档](./docs/design/M02-配置管理模块设计.md)
 - **waleo.sim** - 仿真环境核心模块
+
+### Configuration Management
+
+Waleo 采用**分布式配置架构**：
+
+```python
+# 基础设施工具
+from waleo.config import merge_configs, validate_config, DeviceConfig
+
+# 领域配置在各自模块
+from waleo.sim import EnvConfig, CameraConfig
+
+# 创建和使用配置
+env_config = EnvConfig(
+    task="pick_place",
+    robot_type="panda",
+    num_envs=512
+)
+```
+
+详细说明请参考 [配置管理文档](./src/waleo/config/README.md)。
 
 ## Troubleshooting
 
