@@ -128,15 +128,49 @@ $ export WALEO_ASSETS_DIR=/custom/path
 
 ---
 
-### Phase 4: YAML 配置 ⏳ 待实施
+### Phase 4: YAML 配置 ✅ 完成
 
-**目标**: 创建 `assets/robots/RJ2506/robot.yaml`
+**提交**: `0124502` - feat(sim): Phase 4 - 添加 RJ2506 YAML 配置文件
 
-**格式草案**:
+**实现内容**:
+
+1. **robot.yaml** (`assets/robots/RJ2506/robot.yaml`, 89 行)
+   - ✅ 基础信息：name, urdf, dof, control_mode
+   - ✅ URDF 配置：材料摩擦系数
+   - ✅ PickCube-v1 任务配置：
+     * robot_pose: 机器人位置偏移 [-0.85, 0, -0.35]
+     * keyframes: 夹爪初始状态 (qpos_overrides)
+     * object_config: 物体大小、生成位置、目标阈值
+     * camera_config: sensor_cam 和 human_cam 配置
+   - ✅ 元数据：性能优化提示、已知问题、训练结果
+
+**验证结果**:
+
+```bash
+$ python -c "from waleo.sim.registry import get_robot_registry
+registry = get_robot_registry()
+spec = registry.get('RJ2506')
+config = spec.get_task_config('PickCube-v1')
+print(config.keys())"
+# 输出: dict_keys(['robot_pose', 'keyframes', 'object_config', 'camera_config'])
+```
+
+✓ RobotRegistry 自动加载 YAML
+✓ 所有配置字段正确解析
+✓ get_task_config() 返回完整配置
+
+**实际 YAML 格式**:
 ```yaml
 name: RJ2506
-urdf: urdf/RJ2506_leftarm_only_noagv.urdf
-dof: 8
+urdf: urdf/RJ2506.urdf
+dof: 10
+control_mode: pd_joint_delta_pos
+
+urdf_config:
+  materials:
+    gripper:
+      static_friction: 2.0
+      dynamic_friction: 2.0
 
 task_configs:
   PickCube-v1:
@@ -144,12 +178,18 @@ task_configs:
       offset: [-0.85, 0, -0.35]
     keyframes:
       rest:
-        qpos: [0, 0, 0, -0.785, 0, 1.57, 0.015, 0.015]
+        qpos_overrides:
+          gripper_left: 0.015
+          gripper_right: 0.015
     object_config:
       cube_half_size: 0.008
+      cube_spawn_center: [-0.5, 0]
+      goal_thresh: 0.025
+    camera_config:
+      sensor_cam:
+        eye_pos: [-0.5, 0.2, 0.6]
+        target_pos: [-0.62, 0.29, 0.1]
 ```
-
-**预计**: ~50 行 YAML，从现有 Python 配置迁移
 
 ---
 
