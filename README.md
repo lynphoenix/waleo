@@ -1,6 +1,73 @@
 # Waleo - 机器人仿真与训练框架
 
-Waleo 是一个基于 ManiSkill 构建的综合性机器人仿真与训练框架，提供视觉观测的强化学习训练工具。
+Waleo 是一个基于 ManiSkill 构建的综合性机器人仿真与训练框架，提供无侵入式的机器人集成和高效的强化学习训练工具。
+
+## ✨ 核心特性
+
+- **🚀 一行代码创建环境**：使用 `make_env()` 工厂函数，无需配置
+- **🔌 无侵入式设计**：不修改外部库，完全兼容 ManiSkill
+- **🤖 自定义机器人支持**：YAML 配置驱动，自动发现和注册
+- **⚡ GPU 批量仿真**：支持 512+ 并行环境高效训练
+- **👁️ 多模态观测**：State、RGBD、PointCloud
+- **🎯 生产就绪**：完整测试、文档详尽
+
+## 快速开始
+
+### 安装
+
+```bash
+git clone https://github.com/lynphoenix/waleo.git
+cd waleo
+pip install -e .
+```
+
+### 5 秒创建环境
+
+```python
+from waleo.sim import make_env
+
+# 使用内置机器人
+env = make_env("PickCube-v1", robot="panda", num_envs=1)
+
+# 使用自定义机器人（自动配置）
+env = make_env("PickCube-v1", robot="rj2506", num_envs=512)
+
+# 就这么简单！
+obs, info = env.reset()
+```
+
+### 列出可用资源
+
+```python
+from waleo.sim import list_available_robots, list_available_tasks
+
+# 查看所有可用机器人
+robots = list_available_robots()
+print(robots)  # ['PANDA', 'FETCH', 'RJ2506', ...]
+
+# 查看所有任务
+tasks = list_available_tasks("maniskill")
+print(tasks[:5])  # ['PickCube-v1', 'StackCube-v1', ...]
+```
+
+### 完整训练示例
+
+```bash
+# 使用通用模板
+cd examples/maniskill
+python train_waleo_template.py \
+    --env-id PickCube-v1 \
+    --robot rj2506 \
+    --num-envs 512 \
+    --obs-mode rgbd \
+    --total-timesteps 5000000
+
+# 列出所有可用机器人
+python train_waleo_template.py --list-robots
+
+# 列出所有可用任务
+python train_waleo_template.py --list-tasks
+```
 
 ## 项目结构
 
@@ -116,19 +183,63 @@ python train_ppo_vectorized_from_original.py \
 
 ## 机器人集成
 
-### 添加自定义机器人
+### 方式 1：一行代码（推荐）
+
+使用 `make_env()` 工厂函数，无需任何配置：
+
+```python
+from waleo.sim import make_env
+
+# 自动发现和配置自定义机器人
+env = make_env("PickCube-v1", robot="rj2506", num_envs=512)
+```
+
+所有配置自动从 `assets/robots/RJ2506/robot.yaml` 加载！
+
+### 方式 2：传统方法（不推荐）
 
 1. 将 URDF 文件放置在 `assets/robots/机器人名称/urdf/`
-2. 设置环境变量：`export WALEO_ASSETS_DIR=/path/to/waleo/assets`（添加到 ManiSkill 的默认搜索路径）
-3. 在 ManiSkill 的 agents 目录创建机器人配置
-4. 在 `mani_skill/agents/robots/__init__.py` 注册机器人
+2. 设置环境变量：`export WALEO_ASSETS_DIR=/path/to/waleo/assets`
+3. 创建 `robot.yaml` 配置文件
 
-这样 ManiSkill 会先搜索内置机器人，找不到时再从 `WALEO_ASSETS_DIR` 加载自定义机器人。
+**推荐使用方式 1**，更简单、更可靠。
+
+### 添加新机器人
+
+1. 创建目录结构：
+```bash
+assets/robots/YOUR_ROBOT/
+├── urdf/
+│   └── YOUR_ROBOT.urdf
+└── robot.yaml  # 配置文件
+```
+
+2. 编写 `robot.yaml`：
+```yaml
+name: YOUR_ROBOT
+urdf: urdf/YOUR_ROBOT.urdf
+dof: 10
+control_mode: pd_joint_delta_pos
+
+task_configs:
+  PickCube-v1:
+    robot_pose:
+      offset: [0, 0, 0]  # 调整机器人位置
+    # ... 其他配置
+```
+
+3. 使用：
+```python
+env = make_env("PickCube-v1", robot="your_robot", num_envs=512)
+```
+
+就这么简单！无需修改 ManiSkill 源码，无需 monkey-patching。
 
 **示例**：RJ2506 机器人
+- 配置文件：`assets/robots/RJ2506/robot.yaml`
 - URDF：`assets/robots/RJ2506/urdf/RJ2506.urdf`
 - 自由度：10 DOF（2 body + 6 arm + 2 gripper）
-- 相机：128×128 RGB，110° FOV
+- 使用：`make_env("PickCube-v1", robot="rj2506")`
 
 ## 评估
 
