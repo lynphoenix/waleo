@@ -4,7 +4,13 @@
 name: RJ2506
 urdf: urdf/RJ2506.urdf  # 相对于机器人目录的路径
 dof: 10  # 2 body + 6 arm + 2 gripper
-control_mode: pd_joint_delta_pos
+
+# 后端特定默认参数（通用格式）
+default_kwargs:
+  # ManiSkill 特定参数
+  control_mode: pd_joint_delta_pos
+  # 其他后端的参数可以在这里添加
+  # 例如 MuJoCo: frame_skip: 5
 
 # URDF 加载配置
 urdf_config:

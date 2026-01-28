@@ -3,18 +3,41 @@
 提供无侵入式的机器人和任务配置应用，替代 monkey-patching。
 """
 
-import gymnasium as gym
-from typing import Optional, Dict, Any, Tuple
+from typing import Any, Optional, Dict, Tuple, TYPE_CHECKING
 import numpy as np
 import warnings
 
-try:
-    from waleo.sim.base import EnvWrapper
-except ImportError:
-    # 如果 EnvWrapper 未实现，使用 gymnasium.Wrapper
-    EnvWrapper = gym.Wrapper
+# 延迟导入 gymnasium，只在运行时需要
+if TYPE_CHECKING:
+    import gymnasium as gym
 
 from waleo.sim.registry.robot import get_robot_registry
+
+
+# 获取 Wrapper 基类（延迟导入）
+def _get_wrapper_base():
+    """获取 Wrapper 基类"""
+    try:
+        import gymnasium as gym
+        return gym.Wrapper
+    except ImportError:
+        # 创建一个简单的基类作为后备
+        class Wrapper:
+            def __init__(self, env):
+                self.env = env
+            def __getattr__(self, name):
+                return getattr(self.env, name)
+            def reset(self, *args, **kwargs):
+                return self.env.reset(*args, **kwargs)
+            def step(self, *args, **kwargs):
+                return self.env.step(*args, **kwargs)
+            def close(self):
+                if hasattr(self.env, 'close'):
+                    self.env.close()
+        return Wrapper
+
+
+EnvWrapper = _get_wrapper_base()
 
 
 class CustomRobotWrapper(EnvWrapper):
@@ -45,7 +68,7 @@ class CustomRobotWrapper(EnvWrapper):
 
     def __init__(
         self,
-        env: gym.Env,
+        env: Any,
         robot_name: str,
         task_config: Optional[Dict[str, Any]] = None
     ):
@@ -234,7 +257,7 @@ class TaskConfigWrapper(EnvWrapper):
         >>> env = TaskConfigWrapper(env, task_config)
     """
 
-    def __init__(self, env: gym.Env, task_config: Dict[str, Any]):
+    def __init__(self, env: Any, task_config: Dict[str, Any]):
         """初始化任务配置包装器
 
         Args:
@@ -279,7 +302,7 @@ class CameraConfigWrapper(EnvWrapper):
         >>> env = CameraConfigWrapper(env, camera_config)
     """
 
-    def __init__(self, env: gym.Env, camera_config: Dict[str, Dict]):
+    def __init__(self, env: Any, camera_config: Dict[str, Dict]):
         """初始化相机配置包装器
 
         Args:
@@ -296,23 +319,46 @@ class CameraConfigWrapper(EnvWrapper):
         return obs, info
 
     def _apply_camera_config(self):
-        """应用相机配置"""
+        """应用相机配置
+
+        注意：此功能需要特定后端支持（如 ManiSkill3）。
+        当前实现为基础框架，具体参数设置依赖于各后端的相机 API。
+
+        TODO: 完善各后端的相机配置支持
+        - ManiSkill3: 通过 env.unwrapped.cameras[cam_name] 访问
+        - IsaacSim: 通过相机传感器的 set_local_pose 方法
+        - MuJoCo/PyBullet: 需要查看具体 API
+        """
         try:
             # 尝试通过环境 API 设置相机
-            if hasattr(self.env.unwrapped, "cameras"):
-                cameras = self.env.unwrapped.cameras
+            if not hasattr(self.env.unwrapped, "cameras"):
+                return
 
-                for cam_name, cam_params in self.camera_config.items():
-                    if cam_name in cameras:
-                        camera = cameras[cam_name]
+            cameras = self.env.unwrapped.cameras
 
-                        if "eye_pos" in cam_params:
-                            # 设置相机位置
-                            pass  # 具体实现依赖于 ManiSkill API
+            for cam_name, cam_params in self.camera_config.items():
+                if cam_name not in cameras:
+                    continue
 
-                        if "target_pos" in cam_params:
-                            # 设置观察目标
-                            pass
+                camera = cameras[cam_name]
+
+                # ManiSkill3/SAPIEN 相机配置
+                if "eye_pos" in cam_params:
+                    eye_pos = cam_params["eye_pos"]
+                    target_pos = cam_params.get("target_pos", [0, 0, 0])
+
+                    # 尝试设置相机位置（具体 API 依赖于后端）
+                    if hasattr(camera, "set_local_pose"):
+                        import sapien
+                        camera.set_local_pose(
+                            sapien.Pose(p=eye_pos)
+                        )
+                    elif hasattr(camera, "set_position"):
+                        camera.set_position(eye_pos)
+
+                # 其他相机参数（视野、焦距等）
+                if "fov" in cam_params and hasattr(camera, "set_fov"):
+                    camera.set_fov(cam_params["fov"])
 
         except Exception as e:
             warnings.warn(
@@ -322,10 +368,10 @@ class CameraConfigWrapper(EnvWrapper):
 
 
 def create_wrapped_env(
-    base_env: gym.Env,
+    base_env: Any,
     robot_name: str,
     task_config: Optional[Dict] = None
-) -> gym.Env:
+) -> Any:
     """便捷函数：创建完整包装的环境
 
     自动应用所有相关的包装器。

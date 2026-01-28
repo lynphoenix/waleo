@@ -7,166 +7,182 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-import numpy as np
 
-
-def test_config():
-    """测试配置模块"""
-    print("测试 waleo-config...")
-    from waleo.sim import EnvConfig, CameraConfig
-
-    # 测试 EnvConfig
-    config = EnvConfig(
-        task="push",
-        robot_type="so100",
-        simulation_backend="mujoco"
+def test_factory():
+    """测试工厂函数"""
+    print("测试工厂函数...")
+    from waleo.sim import (
+        make_env,
+        list_available_backends,
+        list_available_robots,
+        list_available_tasks,
+        get_backend,
     )
-    print(f"✓ EnvConfig 创建成功: {config}")
 
-    # 测试从字典创建
-    config_dict = {
-        "task": "pick_place",
-        "robot_type": "aloha",
-        "num_envs": 8
-    }
-    config2 = EnvConfig.from_dict(config_dict)
-    print(f"✓ EnvConfig.from_dict 成功: {config2}")
+    # 测试后端列表
+    backends = list_available_backends()
+    print(f"✓ 可用后端: {backends}")
+    assert "maniskill" in backends
 
-    # 测试 CameraConfig
-    camera_config = CameraConfig(width=640, height=480)
-    print(f"✓ CameraConfig 创建成功: {camera_config}")
+    # 测试 get_backend
+    backend_cls = get_backend("maniskill")
+    print(f"✓ get_backend('maniskill') 返回: {backend_cls}")
 
-    print("✓ waleo-config 测试通过\n")
+    # 测试机器人列表
+    robots = list_available_robots()
+    print(f"✓ 可用机器人: {robots}")
 
+    # 测试任务列表
+    tasks = list_available_tasks("maniskill")
+    print(f"✓ ManiSkill 任务数量: {len(tasks)}")
+    if tasks:
+        print(f"  示例任务: {tasks[:3]}")
 
-def test_base_env():
-    """测试 BaseEnv 基类"""
-    print("测试 BaseEnv...")
-    from waleo.sim.base import BaseEnv, EnvWrapper, VectorEnv, RobotEnv
-
-    # 测试 BaseEnv 导入
-    print(f"✓ BaseEnv 导入成功: {BaseEnv}")
-
-    # 测试 EnvWrapper 导入
-    print(f"✓ EnvWrapper 导入成功: {EnvWrapper}")
-
-    # 测试 VectorEnv 导入
-    print(f"✓ VectorEnv 导入成功: {VectorEnv}")
-
-    # 测试 RobotEnv 导入
-    print(f"✓ RobotEnv 导入成功: {RobotEnv}")
-
-    print("✓ BaseEnv 测试通过\n")
+    print("✓ 工厂函数测试通过\n")
 
 
 def test_backends():
-    """测试仿真后端"""
-    print("测试仿真后端...")
+    """测试后端模块"""
+    print("测试后端模块...")
     from waleo.sim.backends import (
         SimulationBackend,
-        MuJoCoBackend,
-        PyBulletBackend,
         ManiSkillBackend,
-        get_backend
+        BackendError,
+        BackendUnavailableError,
+        BackendCreateError,
     )
 
-    # 测试后端导入
-    print(f"✓ SimulationBackend 导入成功: {SimulationBackend}")
-    print(f"✓ MuJoCoBackend 导入成功: {MuJoCoBackend}")
-    print(f"✓ PyBulletBackend 导入成功: {PyBulletBackend}")
-    print(f"✓ ManiSkillBackend 导入成功: {ManiSkillBackend}")
+    # 测试类导入
+    print(f"✓ SimulationBackend: {SimulationBackend}")
+    print(f"✓ ManiSkillBackend: {ManiSkillBackend}")
+    print(f"✓ BackendError: {BackendError}")
 
-    # 测试 get_backend 函数
-    mujoco_cls = get_backend("mujoco")
-    print(f"✓ get_backend('mujoco') 返回: {mujoco_cls}")
+    # 测试后端属性（name 是 classmethod，需要调用）
+    print(f"✓ ManiSkillBackend.name(): {ManiSkillBackend.name()}")
+    print(f"✓ ManiSkillBackend.import_name: {ManiSkillBackend.import_name}")
 
-    pybullet_cls = get_backend("pybullet")
-    print(f"✓ get_backend('pybullet') 返回: {pybullet_cls}")
+    # 测试可用性检查（可能失败，如果没有安装 mani_skill）
+    try:
+        available = ManiSkillBackend.is_available()
+        print(f"✓ ManiSkillBackend.is_available(): {available}")
+    except Exception as e:
+        print(f"⚠ ManiSkillBackend.is_available() 检查失败（预期）: {e}")
 
-    maniskill_cls = get_backend("maniskill")
-    print(f"✓ get_backend('maniskill') 返回: {maniskill_cls}")
+    # 测试默认参数
+    defaults = ManiSkillBackend.get_default_kwargs()
+    print(f"✓ 默认参数: {defaults}")
 
-    print("✓ 仿真后端测试通过\n")
+    print("✓ 后端模块测试通过\n")
 
 
-def test_simple_env():
-    """测试简单的环境实现"""
-    print("测试简单的环境实现...")
-    from waleo.sim.base import BaseEnv
-    from waleo.sim import EnvConfig
+def test_registry():
+    """测试注册表"""
+    print("测试注册表...")
+    from waleo.sim import get_robot_registry, get_asset_resolver
 
-    class Space:
-        """简单的空间类"""
-        def __init__(self, shape):
-            self._shape = shape
+    # 测试机器人注册表
+    registry = get_robot_registry()
+    print(f"✓ get_robot_registry(): {registry}")
 
-        @property
-        def shape(self):
-            return self._shape
+    robots = registry.list_robots()
+    print(f"✓ 已注册机器人: {robots}")
 
-        def sample(self):
-            return np.random.randn(*self._shape)
+    # 测试资源解析器
+    resolver = get_asset_resolver()
+    print(f"✓ get_asset_resolver(): {resolver}")
 
-    class SimpleEnv(BaseEnv):
-        """简单的测试环境"""
+    print("✓ 注册表测试通过\n")
 
-        def __init__(self):
-            super().__init__()
-            # 设置空间属性（需要通过父类接口）
-            self._observation_space = Space((10,))
-            self._action_space = Space((3,))
 
-        @property
-        def observation_space(self):
-            return self._observation_space
+def test_wrappers():
+    """测试包装器"""
+    print("测试包装器...")
+    from waleo.sim import (
+        CustomRobotWrapper,
+        TaskConfigWrapper,
+        CameraConfigWrapper,
+        create_wrapped_env,
+    )
 
-        @property
-        def action_space(self):
-            return self._action_space
+    print(f"✓ CustomRobotWrapper: {CustomRobotWrapper}")
+    print(f"✓ TaskConfigWrapper: {TaskConfigWrapper}")
+    print(f"✓ CameraConfigWrapper: {CameraConfigWrapper}")
+    print(f"✓ create_wrapped_env: {create_wrapped_env}")
 
-        def reset(self, seed=None, options=None):
-            return np.zeros(10), {}
+    print("✓ 包装器测试通过\n")
 
-        def step(self, action):
-            return (
-                np.zeros(10),
-                0.0,
-                False,
-                False,
-                {}
-            )
 
-    # 测试环境创建
-    env = SimpleEnv()
-    print(f"✓ 环境创建成功: {env}")
+def test_imports():
+    """测试所有公开 API 导入"""
+    print("测试公开 API...")
+    from waleo.sim import (
+        # 版本
+        __version__,
+        # 工厂函数
+        make_env,
+        make,
+        list_available_backends,
+        list_available_robots,
+        list_available_tasks,
+        # 后端
+        SimulationBackend,
+        ManiSkillBackend,
+        BackendError,
+        # 注册表
+        get_robot_registry,
+        get_asset_resolver,
+        # 包装器
+        CustomRobotWrapper,
+        TaskConfigWrapper,
+        CameraConfigWrapper,
+    )
 
-    # 测试 reset
-    obs, info = env.reset()
-    print(f"✓ reset 成功: obs.shape={obs.shape}")
+    print(f"✓ 版本: {__version__}")
+    print("✓ 所有公开 API 导入成功")
+    print("✓ API 导入测试通过\n")
 
-    # 测试 step
-    action = np.zeros(3)
-    obs, reward, terminated, truncated, info = env.step(action)
-    print(f"✓ step 成功: reward={reward}, terminated={terminated}")
 
-    print("✓ 简单环境测试通过\n")
+def test_backend_consistency():
+    """测试后端一致性"""
+    print("测试后端一致性...")
+    from waleo.sim.backends import ManiSkillBackend
+    from waleo.sim.backends.base import SimulationBackend
+
+    # 验证继承关系
+    assert issubclass(ManiSkillBackend, SimulationBackend)
+    print("✓ ManiSkillBackend 继承自 SimulationBackend")
+
+    # 验证必需方法
+    assert hasattr(ManiSkillBackend, "create")
+    assert hasattr(ManiSkillBackend, "is_available")
+    assert hasattr(ManiSkillBackend, "get_default_kwargs")
+    print("✓ ManiSkillBackend 实现了所有必需方法")
+
+    # 验证类属性（name 是 classmethod，需要调用）
+    assert ManiSkillBackend.name() == "maniskill"
+    assert ManiSkillBackend.import_name == "mani_skill"
+    print("✓ ManiSkillBackend 类属性正确")
+
+    print("✓ 后端一致性测试通过\n")
 
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("Waleo-Sim 模块测试")
-    print("=" * 50)
+    print("=" * 60)
+    print("Waleo-Sim 模块测试（重构后架构）")
+    print("=" * 60)
     print()
 
     try:
-        test_config()
-        test_base_env()
+        test_imports()
+        test_factory()
         test_backends()
-        test_simple_env()
+        test_registry()
+        test_wrappers()
+        test_backend_consistency()
 
-        print("=" * 50)
+        print("=" * 60)
         print("✅ 所有测试通过！")
-        print("=" * 50)
+        print("=" * 60)
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")

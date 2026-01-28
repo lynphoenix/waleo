@@ -35,7 +35,7 @@ class RobotSpec:
         robot_dir: 机器人资源目录
         config_path: 配置文件路径（如果从 YAML 加载）
         dof: 自由度数量
-        control_mode: 控制模式
+        default_kwargs: 后端特定默认参数（通用）
         task_configs: 任务特定配置字典
         metadata: 其他元数据
 
@@ -44,6 +44,7 @@ class RobotSpec:
         ...     name="rj2506",
         ...     urdf_path=Path("/path/to/rj2506.urdf"),
         ...     dof=8,
+        ...     default_kwargs={"control_mode": "pd_joint_pos"},  # ManiSkill
         ... )
     """
 
@@ -55,7 +56,7 @@ class RobotSpec:
     urdf_config: Dict[str, Any] = field(default_factory=dict)
     config_path: Optional[Path] = None
     dof: int = 0
-    control_mode: str = "pd_joint_delta_pos"
+    default_kwargs: Dict[str, Any] = field(default_factory=dict)
     task_configs: Dict[str, Dict] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -78,7 +79,11 @@ class RobotSpec:
             name: rj2506
             urdf: urdf/rj2506.urdf  # 相对于机器人目录
             dof: 8
-            control_mode: pd_joint_delta_pos
+
+            # 后端特定默认参数（通用）
+            default_kwargs:
+              control_mode: pd_joint_pos  # ManiSkill 特定
+              frame_skip: 5               # MuJoCo 特定（示例）
 
             urdf_config:
               materials:
@@ -127,6 +132,15 @@ class RobotSpec:
         if robot_dir is None:
             robot_dir = config_path.parent
 
+        # 处理 default_kwargs（支持两种格式）
+        # 新格式：default_kwargs: {control_mode: pd_joint_pos}
+        # 旧格式：control_mode: pd_joint_pos（向后兼容）
+        default_kwargs = data.get("default_kwargs", {})
+
+        # 向后兼容：如果 YAML 中直接写了 control_mode，自动迁移到 default_kwargs
+        if "control_mode" in data and "control_mode" not in default_kwargs:
+            default_kwargs["control_mode"] = data["control_mode"]
+
         return cls(
             name=robot_name,
             urdf_path=urdf_path,
@@ -134,7 +148,7 @@ class RobotSpec:
             urdf_config=data.get("urdf_config", {}),
             config_path=config_path,
             dof=data.get("dof", 0),
-            control_mode=data.get("control_mode", "pd_joint_delta_pos"),
+            default_kwargs=default_kwargs,
             task_configs=data.get("task_configs", {}),
             metadata=data.get("metadata", {}),
         )
