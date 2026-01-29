@@ -76,7 +76,9 @@ waleo/
 ├── waleo/              # 主包
 │   ├── utils/          # 基础设施工具（设备、分布式、日志等）
 │   ├── config/         # 配置管理基础设施
-│   └── sim/            # 仿真环境模块
+│   ├── sim/            # 仿真环境模块
+│   ├── dataset/        # 数据集加载和处理模块
+│   └── policy/         # 策略接口模块
 │
 ├── tools/              # 开发工具
 │   └── mesh_simplification/  # Mesh 简化工具
@@ -93,7 +95,9 @@ waleo/
 ├── tests/              # 单元测试
 │   ├── test_utils/     # waleo.utils 测试
 │   ├── test_config/    # waleo.config 测试
-│   └── test_sim/       # waleo.sim 测试
+│   ├── test_sim/       # waleo.sim 测试
+│   ├── test_dataset/   # waleo.dataset 测试
+│   └── test_policy/    # waleo.policy 测试
 │
 └── docs/               # 文档（中文）
     ├── design/         # 模块设计文档
@@ -283,6 +287,8 @@ python train_ppo_vectorized_from_original.py \
 - **waleo.utils** - [使用指南](./waleo/utils/README.md) | [设计文档](./docs/design/M01-基础设施模块设计.md)
 - **waleo.config** - [使用指南](./waleo/config/README.md) | [设计文档](./docs/design/M02-配置管理模块设计.md)
 - **waleo.sim** - 仿真环境核心模块 | [设计文档](./docs/design/M11-仿真基类模块设计.md)
+- **waleo.dataset** - 数据集加载和处理模块 | [设计文档](./docs/design/M03-数据集模块设计.md)
+- **waleo.policy** - 策略接口模块 | [设计文档](./docs/design/M04-策略接口模块设计.md)
 - **tools** - [开发工具](./tools/README.md)
 - **scripts** - [开发脚本](./scripts/README.md)
 

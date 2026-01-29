@@ -5,6 +5,8 @@ Waleo - Robotics Learning Framework
 - 基础设施工具 (waleo.utils)
 - 配置管理系统 (waleo.config)
 - 仿真环境 (waleo.sim)
+- 数据集模块 (waleo.dataset)
+- 策略接口模块 (waleo.policy)
 """
 
 __version__ = "0.1.0"
@@ -13,10 +15,14 @@ __version__ = "0.1.0"
 from . import utils
 from . import config
 from . import sim
+from . import dataset
+from . import policy
 
 __all__ = [
     "utils",
     "config",
     "sim",
+    "dataset",
+    "policy",
     "__version__",
 ]
